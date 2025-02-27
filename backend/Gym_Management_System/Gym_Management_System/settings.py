@@ -12,6 +12,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from corsheaders.defaults import default_headers
+import os
+import firebase_admin
+from firebase_admin import credentials
+from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,13 +41,9 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     'Authorization',
 ]
 
-import os
-import firebase_admin
-from firebase_admin import credentials
-from datetime import timedelta
 
 
-FIREBASE_CREDENTIALS_PATH = r"../Gym_Management_app/backend/gymmanagement-a605b-firebase-adminsdk-fbsvc-e4a485d4b0.json"
+FIREBASE_CREDENTIALS_PATH = r"../gymmanagement-a605b-firebase-adminsdk-fbsvc-e4a485d4b0.json"
 
 # Initialize Firebase if not already initialized
 if not firebase_admin._apps:
@@ -51,8 +52,7 @@ if not firebase_admin._apps:
 
 
 
-import os
-from dotenv import load_dotenv
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -209,6 +209,6 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "alameena068@gmail.com"  # Replace with your email
-EMAIL_HOST_PASSWORD = "syfierjooftkjocz"  # Use an App Password (Not your email password)
+EMAIL_HOST_USER = "alameena068@gmail.com"  
+EMAIL_HOST_PASSWORD = "syfierjooftkjocz" 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
