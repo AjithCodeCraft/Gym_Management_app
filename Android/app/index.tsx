@@ -1,14 +1,17 @@
-import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { Text, View } from 'react-native';
+import React from 'react'
+import { View, Text } from 'react-native'
+import Home from './(Tabs)/Home'
+import MyComponent from '~/components/Navigation'
 
-export default function App() {
+const index = () => {
   return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <Text className="text-lg text-gray-800">
-        Open up App.js to start working on your app!
-      </Text>
-      <StatusBar style="auto" />
+    <><View>
+        
+
     </View>
-  );
+    
+    <MyComponent /></>
+  )
 }
+
+export default index
