@@ -13,6 +13,11 @@ const Dashboard = () => {
     const [day, month, year] = dateString.split('/');
     return new Date(`${year}-${month}-${day}`);
   };
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
   const users = [
     {
       id: 1,
@@ -36,7 +41,7 @@ const Dashboard = () => {
       plan: "1 Month",
       endDate: parseDate("2025-03-20"),
       isActive: true,
-      joinDate:parseDate("2024-01-20")
+      joinDate: parseDate("2024-01-20")
     },
     {
       id: 3,
@@ -284,8 +289,7 @@ const Dashboard = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {/* {user.endDate.toLocaleDateString()} */}
-
+                                {formatDate(user.endDate)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
@@ -309,7 +313,7 @@ const Dashboard = () => {
                           )}
 
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {/* {new Date(user.joinDate).toLocaleDateString()} */}
+                            {formatDate(user.joinDate)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="relative inline-block text-left">

@@ -1,16 +1,17 @@
 import { GalleryVerticalEnd } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Image from "next/image";
 
 export default function LoginPage() {
   return (
-    <div className="grid min-h-svh lg:grid-cols-2">
+    <div className="h-screen overflow-hidden grid lg:grid-cols-2">
+
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
           <a href="#" className="flex items-center gap-2 font-medium">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-orange-500 text-white">
               <GalleryVerticalEnd className="size-4" />
             </div>
             Acme Inc.
@@ -39,11 +40,10 @@ export default function LoginPage() {
                   </div>
                   <Input id="password" type="password" required />
                 </div>
-                <Button type="submit" className="w-full">
+                {/* Custom Button - orange-500 */}
+                <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white">
                   Login
                 </Button>
-                
-               
               </div>
               <div className="text-center text-sm">
                 Don&apos;t have an account?{" "}
@@ -55,11 +55,14 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-      <div className="relative hidden bg-muted lg:block">
-        <img
-          src="/placeholder.svg"
-          alt="Image"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+      <div className="relative hidden lg:block">
+        <Image
+          src="/loginimage.jpg"
+          alt="Login Cover"
+          width={1920}
+          height={1080}
+          className="h-full w-full object-cover"
+          priority
         />
       </div>
     </div>
