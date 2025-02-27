@@ -1,7 +1,8 @@
 import random
 from django.utils import timezone
+from datetime import timedelta
 from django.shortcuts import render
-from .models import OTPVerification, User
+from .models import OTPVerification, Payment, Subscription, User, UserSubscription
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import make_password, check_password
@@ -9,10 +10,11 @@ from firebase_admin import auth
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-
+import requests
 import jwt
 from django.conf import settings
 from django.core.mail import send_mail
+from .serializers import SubscriptionSerializer
 # Create your views here.
 
 
@@ -87,6 +89,7 @@ def register_user(request):
     name = request.data.get('name')
     phone = request.data.get('phone_number')
     user_type = request.data.get('user_type', 'user')  # Default to 'user'
+    subscription_plan_id = request.data.get('subscription_plan_id')  # Subscription plan ID
 
     VALID_USER_TYPES = ['user', 'trainer', 'admin']
     if user_type not in VALID_USER_TYPES:
@@ -105,6 +108,12 @@ def register_user(request):
     # Check if email already exists in Django database
     if User.objects.filter(email=email).exists():
         return Response({'error': 'Email already exists in the system'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if subscription plan exists
+    try:
+        subscription_plan = Subscription.objects.get(id=subscription_plan_id)
+    except Subscription.DoesNotExist:
+        return Response({'error': 'Subscription plan not found'}, status=status.HTTP_404_NOT_FOUND)
 
     try:
         # Create user in Firebase
@@ -130,11 +139,62 @@ def register_user(request):
             password=make_password(password)  # Store hashed password
         )
 
+        # Create Payment record (assuming offline payment is confirmed)
+        payment = Payment.objects.create(
+            user=user,
+            amount=subscription_plan.price,
+            payment_date=timezone.now(),
+            status='completed',
+            payment_method='offline'  # Add payment method as offline
+        )
+
+        # Create UserSubscription record
+        start_date = timezone.now().date()
+        end_date = start_date + timedelta(days=subscription_plan.duration_days)
+        UserSubscription.objects.create(
+            user=user,
+            subscription=subscription_plan,
+            start_date=start_date,
+            end_date=end_date,
+            status='active'
+        )
+
+        # Prepare email content with subscription details in a table format
+        subscription_details = f"""
+        <p>Hello {name},</p>
+        <p>Your account has been successfully created!</p>
+        <p>Login Credentials:</p>
+        <ul>
+            <li>Email: {email}</li>
+            <li>Password: {password}</li>
+        </ul>
+        <p>Subscription Details:</p>
+        <table border="1" cellpadding="5" cellspacing="0">
+            <tr>
+                <th>Subscription Plan</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Amount Paid</th>
+                <th>Payment Method</th>
+            </tr>
+            <tr>
+                <td>{subscription_plan.name}</td>
+                <td>{start_date}</td>
+                <td>{end_date}</td>
+                <td>${subscription_plan.price}</td>
+                <td>Offline</td>
+            </tr>
+        </table>
+        <p>Please keep your credentials secure.</p>
+        <p>Best regards,<br>Gym Management Team</p>
+        """
+
         # Send email to users & trainers (not admins)
         if user_type in ['user', 'trainer']:
             send_mail(
                 subject="Welcome to Gym Management System",
-                message=f"Hello {name},\n\nYour account has been successfully created!\n\nLogin Credentials:\nEmail: {email}\nPassword: {password}\n\nPlease keep your credentials secure.\n\nBest regards,\nGym Management Team",
+                message="",  # Plain text version (empty as we are using HTML)
+                html_message=subscription_details,  # HTML version of the email
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
                 fail_silently=False,
@@ -143,13 +203,14 @@ def register_user(request):
         return Response({
             "message": "User created successfully",
             "user_id": new_user.uid,
-            "user_type": user_type
+            "user_type": user_type,
+            "subscription_plan": subscription_plan.name,
+            "payment_status": "completed",
+            "payment_method": "offline"
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 @api_view(['POST'])
@@ -186,13 +247,35 @@ def login_user(request):
         return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        
+        # Verify user with Firebase Authentication
         firebase_user = auth.get_user_by_email(email)
+
+        # Firebase does not store passwords, so we need to sign in using Firebase REST API
+        
+        firebase_api_key = "AIzaSyB6M8BgWoTQq2RCFkAMMC82wSnER1E8z0g"  # Replace with your Firebase API Key
+        firebase_auth_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={firebase_api_key}"
+        
+        payload = {
+            "email": email,
+            "password": password,
+            "returnSecureToken": True
+        }
+
+        response = requests.post(firebase_auth_url, json=payload)
+        firebase_data = response.json()
+
+        if "error" in firebase_data:
+            return Response({'error': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Check if the user exists in the Django database
         user = User.objects.get(email=email)
+
+        # If the stored password is different, update it
         if not check_password(password, user.password): 
-            user.password = make_password(password)  
+            user.password = make_password(password)
             user.save()
-           
+
+        # Generate JWT token
         refresh = RefreshToken.for_user(user)
 
         return Response({
@@ -209,3 +292,27 @@ def login_user(request):
 
     except Exception as e:
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['GET'])
+def list_subscriptions(request):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "trainer":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    subscriptions = Subscription.objects.all()
+    serializer = SubscriptionSerializer(subscriptions, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+@api_view(['POST'])
+def add_subscription(request):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "trainer":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = SubscriptionSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
