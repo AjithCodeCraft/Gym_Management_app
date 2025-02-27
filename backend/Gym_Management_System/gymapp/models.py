@@ -1,6 +1,7 @@
 from uuid import uuid4
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+import uuid
 
 
 
@@ -68,3 +69,266 @@ class OTPVerification(models.Model):
 
     def __str__(self):
         return self.email
+
+
+
+
+class UserProfile(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='profile')
+    height = models.FloatField(help_text="Height in cm")
+    weight = models.FloatField(help_text="Weight in kg")
+    bmi = models.FloatField(help_text="Body Mass Index")
+    fitness_goal = models.TextField(help_text="User's fitness goal")
+    daily_calorie_target = models.IntegerField(help_text="Daily calorie intake target")
+
+    def __str__(self):
+        return f"{self.user.name}'s Profile"
+
+
+
+class TrainerProfile(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='trainer_profile')
+    specialization = models.CharField(max_length=255)
+    experience_years = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.user.name} - {self.specialization}"
+    
+
+class Subscription(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    duration_days = models.IntegerField(help_text="Duration of the subscription in days")
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class UserSubscription(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='subscriptions')
+    subscription = models.ForeignKey('Subscription', on_delete=models.CASCADE, related_name='user_subscriptions')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Subscription {self.subscription.name} - {self.user.name} ({self.status})"
+
+
+class WorkoutPlan(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='workout_plans')
+    name = models.CharField(max_length=255)
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.user.name}"
+
+
+class WorkoutDay(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workout_plan = models.ForeignKey('WorkoutPlan', on_delete=models.CASCADE, related_name='workout_days')
+    days_of_week = models.IntegerField(help_text="Day of the week (0=Monday, 6=Sunday)")
+    focus = models.CharField(max_length=255, help_text="Focus area for the workout (e.g., Chest, Legs, Cardio)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.workout_plan.name} - Day {self.days_of_week} ({self.focus})"
+
+
+    
+class Exercise(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, help_text="Name of the exercise")
+    description = models.TextField(help_text="Detailed description of the exercise")
+    muscle_group = models.CharField(max_length=255, help_text="Primary muscle group targeted (e.g., Chest, Legs, Arms)")
+    equipment = models.CharField(max_length=255, blank=True, null=True, help_text="Equipment required (e.g., Dumbbell, Barbell, Bodyweight)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.muscle_group})"
+
+
+
+class WorkoutExercise(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workout_day = models.ForeignKey('WorkoutDay', on_delete=models.CASCADE, related_name='workout_exercises')
+    exercise = models.ForeignKey('Exercise', on_delete=models.CASCADE, related_name='workout_exercises')
+    sets = models.IntegerField(help_text="Number of sets")
+    reps = models.IntegerField(help_text="Number of repetitions per set")
+    weight = models.DecimalField(max_digits=5, decimal_places=2, help_text="Weight used in kg (if applicable)")
+    order_in_workout = models.IntegerField(help_text="Order of exercise in the workout routine")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.workout_day} - {self.exercise.name} (Sets: {self.sets}, Reps: {self.reps})"
+
+    
+
+class MealType(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True, help_text="Type of meal (e.g., Breakfast, Lunch, Dinner, Snack)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class NutritionLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='nutrition_logs')
+    meal_type = models.ForeignKey('MealType', on_delete=models.SET_NULL, null=True, related_name='nutrition_logs')
+    log_date = models.DateField(help_text="Date of the meal log")
+    food_item = models.CharField(max_length=255, help_text="Name of the food item")
+    calories = models.IntegerField(help_text="Calories in kcal")
+    protein = models.DecimalField(max_digits=6, decimal_places=2, help_text="Protein in grams")
+    carbs = models.DecimalField(max_digits=6, decimal_places=2, help_text="Carbohydrates in grams")
+    fats = models.DecimalField(max_digits=6, decimal_places=2, help_text="Fats in grams")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.name} - {self.food_item} ({self.log_date})"
+
+
+
+class Attendance(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='attendance_records')
+    status = models.CharField(max_length=20, choices=[('present', 'Present'), ('absent', 'Absent')], default='present')
+    check_in_time = models.DateTimeField(null=True, blank=True)
+    check_out_time = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Attendance - {self.user.name} ({self.status})"
+
+
+
+class Payment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='user_payments')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField()
+    status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')],
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Payment {self.id} - {self.trainer.name} ({self.status})"
+
+
+
+class TrainerSalary(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    trainer = models.ForeignKey('User', on_delete=models.CASCADE, related_name='salaries')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateTimeField()
+    status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('paid', 'Paid'), ('failed', 'Failed')],
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Salary {self.id} - {self.trainer.name} ({self.status})"
+
+
+class UserProgress(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='progress')
+    measurement_date = models.DateField()
+    weight = models.FloatField(help_text="Weight in kg")
+    body_fat_percentage = models.FloatField(help_text="Body fat percentage")
+    muscle_mass = models.FloatField(help_text="Muscle mass in kg")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Progress of {self.user.name} on {self.measurement_date}"
+
+
+
+class SleepLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='sleep_logs')
+    sleep_date = models.DateField(help_text="Date of sleep log")
+    sleep_duration_hours = models.FloatField(help_text="Duration of sleep in hours")
+    sleep_quality = models.CharField(max_length=50, help_text="Quality of sleep (e.g., Poor, Average, Good, Excellent)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Sleep Log for {self.user.name} on {self.sleep_date}"
+    
+
+
+class UserWorkout(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='user_workouts')
+    workout_day = models.ForeignKey('WorkoutDay', on_delete=models.CASCADE, related_name='user_workouts')
+    completed_date = models.DateField(help_text="Date when the workout was completed", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Workout for {self.user.name} on {self.completed_date}"
+
+
+
+class UserCompletedExercise(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user_workout = models.ForeignKey('UserWorkout', on_delete=models.CASCADE, related_name='completed_exercises')
+    exercise = models.ForeignKey('Exercise', on_delete=models.CASCADE, related_name='completed_exercises')
+    sets = models.IntegerField(default=0, help_text="Number of sets completed")
+    reps = models.IntegerField(default=0, help_text="Number of repetitions per set")
+    weight = models.DecimalField(max_digits=6, decimal_places=2, default=0.0, help_text="Weight used in kg")
+    completed = models.BooleanField(default=False, help_text="Indicates if the exercise was completed")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user_workout.user.name} - {self.exercise.name} ({'Completed' if self.completed else 'Pending'})"
+    
+
+
+class Challenge(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, help_text="Name of the challenge")
+    description = models.TextField(help_text="Detailed description of the challenge")
+    start_date = models.DateField(help_text="Challenge start date")
+    end_date = models.DateField(help_text="Challenge end date")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
