@@ -106,8 +106,8 @@ const AppBar = () => {
       top: 70,
       left: 0,
       width: 250,
-      height: '100%',
-      backgroundColor: '#fff',
+      height: 800,
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
       zIndex: 1001,
       elevation: 8,
       shadowColor: '#000',
@@ -134,6 +134,15 @@ const AppBar = () => {
       paddingVertical: 16,
       borderBottomWidth: 1,
       borderBottomColor: '#f3f4f6',
+    },
+    menuItemHome: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 30, // Increase vertical padding
+      marginBottom: 0, // Add margin at the bottom of each item
+      backgroundColor: '#fff',
+     
     },
     menuItemText: {
       color: "#f97316",
@@ -221,7 +230,7 @@ const AppBar = () => {
           >
             <TouchableOpacity 
               onPress={() => navigateTo('/home')}
-              style={styles.menuItem}
+              style={styles.menuItemHome}
             >
               <Ionicons name="home" size={24} color="#f97316" />
               <Text style={styles.menuItemText}>Home</Text>
@@ -229,15 +238,15 @@ const AppBar = () => {
             
             <TouchableOpacity 
               onPress={() => navigateTo('/community')}
-              style={styles.menuItem}
+              style={styles.menuItemHome}
             >
               <Ionicons name="people" size={24} color="#f97316"/>
-              <Text  style={styles.menuItemText}>Community</Text>
+              <Text style={styles.menuItemText}>Community</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               onPress={() => navigateTo('/progress')}
-              style={styles.menuItem}
+              style={styles.menuItemHome}
             >
               <Ionicons name="trending-up" size={24} color="#f97316" />
               <Text style={styles.menuItemText}>Progress</Text>
@@ -245,7 +254,7 @@ const AppBar = () => {
             
             <TouchableOpacity 
               onPress={() => navigateTo('/challenges')}
-              style={styles.menuItem}
+              style={styles.menuItemHome}
             >
               <Ionicons name="trophy" size={24} color="#f97316" />
               <Text style={styles.menuItemText}>Challenges</Text>
@@ -253,7 +262,7 @@ const AppBar = () => {
             
             <TouchableOpacity 
               onPress={() => navigateTo('/settings')}
-              style={styles.menuItem}
+              style={styles.menuItemHome}
             >
               <Ionicons name="settings" size={24} color="#f97316" />
               <Text style={styles.menuItemText}>Settings</Text>
@@ -261,7 +270,7 @@ const AppBar = () => {
             
             <TouchableOpacity 
               onPress={() => navigateTo('/help')}
-              style={styles.menuItem}
+              style={styles.menuItemHome}
             >
               <Ionicons name="help-circle" size={24} color="#f97316" />
               <Text style={styles.menuItemText}>Help</Text>

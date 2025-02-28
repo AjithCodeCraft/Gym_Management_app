@@ -62,6 +62,16 @@ export default function TabLayout() {
             ),
           }}
         />
+         <Tabs.Screen
+          name="sleepTracker"
+          options={{
+            title: 'Sleep',
+            headerShown: false,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="bed-outline" size={size} color={color} />
+            ),
+          }}
+        />
         <Tabs.Screen
           name="gym"
           options={{
