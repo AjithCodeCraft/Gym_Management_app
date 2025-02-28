@@ -43,9 +43,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     ]
     
     id = models.AutoField(primary_key=True)
-    user_id = models.CharField(max_length=28, unique=True)  # Firebase UID
+    user_id = models.CharField(max_length=28, unique=True) 
     email = models.EmailField(unique=True)
-    password = models.TextField()  # Store hashed password
+    password = models.TextField()  
     name = models.CharField(max_length=120)
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES)
     date_of_birth = models.DateField(blank=True, null=True)
@@ -92,6 +92,13 @@ class TrainerProfile(models.Model):
     user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='trainer_profile')
     specialization = models.CharField(max_length=255)
     experience_years = models.IntegerField()
+    qualifications = models.TextField()
+    availability = models.CharField(
+        max_length=50,
+        choices=[("Morning", "Morning"), ("Evening", "Evening"), ("Both", "Both")],
+        default="Both"
+    )
+    salary = models.DecimalField(max_digits=10, decimal_places=2) 
 
     def __str__(self):
         return f"{self.user.name} - {self.specialization}"
