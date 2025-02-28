@@ -8,7 +8,6 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("members");
 
-  // Sample data
   const parseDate = (dateString) => {
     const [day, month, year] = dateString.split('/');
     return new Date(`${year}-${month}-${day}`);
@@ -19,80 +18,20 @@ const Dashboard = () => {
   };
 
   const users = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john@example.com",
-      userType: "member",
-      gender: "male",
-      phone: "+1234567890",
-      plan: "3 Months",
-      endDate: parseDate("2025-05-15"),
-      isActive: true,
-      joinDate: parseDate("2024-01-15")
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane@example.com",
-      userType: "member",
-      gender: "female",
-      phone: "+0987654321",
-      plan: "1 Month",
-      endDate: parseDate("2025-03-20"),
-      isActive: true,
-      joinDate: parseDate("2024-01-20")
-    },
-    {
-      id: 3,
-      name: "Mike Johnson",
-      email: "mike@example.com",
-      userType: "trainer",
-      gender: "male",
-      phone: "+1239874560",
-      specialization: "Strength Training",
-      isActive: true,
-      joinDate: parseDate("2024-01-05")
-    },
-    {
-      id: 4,
-      name: "Sara Williams",
-      email: "sara@example.com",
-      userType: "trainer",
-      gender: "female",
-      phone: "+3216549870",
-      specialization: "Yoga & Flexibility",
-      isActive: true,
-      joinDate: parseDate("2023-12-10")
-    },
-    {
-      id: 5,
-      name: "Robert Chen",
-      email: "robert@example.com",
-      userType: "member",
-      gender: "male",
-      phone: "+4567891230",
-      plan: "Personal Training",
-      endDate: parseDate("2025-04-12"),
-      isActive: true,
-      joinDate: parseDate("2024-02-12")
-    }
+    { id: 1, name: "John Doe", email: "john@example.com", userType: "member", gender: "male", phone: "+1234567890", plan: "3 Months", endDate: parseDate("2025-05-15"), isActive: true, joinDate: parseDate("2024-01-15") },
+    { id: 2, name: "Jane Smith", email: "jane@example.com", userType: "member", gender: "female", phone: "+0987654321", plan: "1 Month", endDate: parseDate("2025-03-20"), isActive: true, joinDate: parseDate("2024-01-20") },
+    { id: 3, name: "Mike Johnson", email: "mike@example.com", userType: "trainer", gender: "male", phone: "+1239874560", specialization: "Strength Training", isActive: true, joinDate: parseDate("2024-01-05") },
+    { id: 4, name: "Sara Williams", email: "sara@example.com", userType: "trainer", gender: "female", phone: "+3216549870", specialization: "Yoga & Flexibility", isActive: true, joinDate: parseDate("2023-12-10") },
+    { id: 5, name: "Robert Chen", email: "robert@example.com", userType: "member", gender: "male", phone: "+4567891230", plan: "Personal Training", endDate: parseDate("2025-04-12"), isActive: true, joinDate: parseDate("2024-02-12") }
   ];
 
   const members = users.filter(user => user.userType === "member");
   const trainers = users.filter(user => user.userType === "trainer");
 
   const filteredUsers = activeTab === "members"
-    ? members.filter(user => {
-        return user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchQuery.toLowerCase());
-      })
-    : trainers.filter(user => {
-        return user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchQuery.toLowerCase());
-      });
+    ? members.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase()))
+    : trainers.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  // Stats
   const stats = {
     totalMembers: members.length,
     totalTrainers: trainers.length,
@@ -101,7 +40,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-50 py-6">
       <AdminSidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -110,9 +49,9 @@ const Dashboard = () => {
         <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
-                <div className="flex space-x-3">
+                <div className="flex space-x-3 mt-4 md:mt-0">
                   <Link href="/admin/dashboard/add-user">
                     <button className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
                       <Plus className="h-4 w-4 mr-2" />
@@ -128,7 +67,6 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Stats cards */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="bg-white overflow-hidden shadow rounded-lg border-0">
                   <div className="p-5">
@@ -187,13 +125,12 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Tabs */}
               <div className="bg-white shadow rounded-lg overflow-hidden">
                 <div className="border-b border-gray-200">
-                  <div className="flex p-4">
+                  <div className="flex flex-col md:flex-row p-4">
                     <button
                       onClick={() => setActiveTab("members")}
-                      className={`mr-4 py-2 px-4 font-medium text-sm rounded-md ${
+                      className={`mr-4 py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${
                         activeTab === "members"
                           ? "bg-orange-500 text-white"
                           : "text-gray-500 hover:text-gray-700"
@@ -203,7 +140,7 @@ const Dashboard = () => {
                     </button>
                     <button
                       onClick={() => setActiveTab("trainers")}
-                      className={`py-2 px-4 font-medium text-sm rounded-md ${
+                      className={`py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${
                         activeTab === "trainers"
                           ? "bg-orange-500 text-white"
                           : "text-gray-500 hover:text-gray-700"
@@ -212,7 +149,7 @@ const Dashboard = () => {
                       Trainers
                     </button>
 
-                    <div className="ml-auto flex space-x-2">
+                    <div className="ml-auto flex space-x-2 mt-2 md:mt-0">
                       <button className="flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm">
                         <Filter className="h-4 w-4 mr-2 text-gray-500" />
                         Filter
@@ -220,7 +157,7 @@ const Dashboard = () => {
                       <div className="relative">
                         <Search className="h-4 w-4 absolute left-3 top-2 text-gray-400" />
                         <input
-                          className="pl-9 pr-4 py-1 border border-gray-300 rounded-md text-sm w-64"
+                          className="pl-9 pr-4 py-1 border border-gray-300 rounded-md text-sm w-full md:w-64"
                           placeholder="Search by name, email..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
