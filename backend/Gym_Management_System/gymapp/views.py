@@ -1,6 +1,6 @@
 import random
 from django.utils import timezone
-from datetime import timedelta
+from dateutil.relativedelta import relativedelta
 from django.shortcuts import render
 from .models import OTPVerification, Payment, Subscription, User, UserSubscription
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
@@ -139,18 +139,18 @@ def register_user(request):
             password=make_password(password)  # Store hashed password
         )
 
-        # Create Payment record (assuming offline payment is confirmed)
+       
         payment = Payment.objects.create(
             user=user,
             amount=subscription_plan.price,
             payment_date=timezone.now(),
             status='completed',
-            payment_method='offline'  # Add payment method as offline
+            payment_method='offline'
         )
 
         # Create UserSubscription record
         start_date = timezone.now().date()
-        end_date = start_date + timedelta(days=subscription_plan.duration_days)
+        end_date = start_date + relativedelta(months=subscription_plan.duration) 
         UserSubscription.objects.create(
             user=user,
             subscription=subscription_plan,
@@ -159,7 +159,7 @@ def register_user(request):
             status='active'
         )
 
-        # Prepare email content with subscription details in a table format
+        
         subscription_details = f"""
         <p>Hello {name},</p>
         <p>Your account has been successfully created!</p>
@@ -189,12 +189,11 @@ def register_user(request):
         <p>Best regards,<br>Gym Management Team</p>
         """
 
-        # Send email to users & trainers (not admins)
         if user_type in ['user', 'trainer']:
             send_mail(
                 subject="Welcome to Gym Management System",
-                message="",  # Plain text version (empty as we are using HTML)
-                html_message=subscription_details,  # HTML version of the email
+                message="",  
+                html_message=subscription_details,  
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email],
                 fail_silently=False,
@@ -211,6 +210,8 @@ def register_user(request):
 
     except Exception as e:
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 @api_view(['POST'])
