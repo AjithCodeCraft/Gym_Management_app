@@ -2,7 +2,7 @@ import random
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from django.shortcuts import render
-from .models import OTPVerification, Payment, Subscription, User, UserSubscription
+from .models import OTPVerification, Payment, Subscription, TrainerProfile, User, UserSubscription
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import make_password, check_password
@@ -82,38 +82,46 @@ def verify_otp(request):
         return Response({'error': 'OTP not found or already used'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+VALID_USER_TYPES = ['user', 'trainer', 'admin']
+
 @api_view(['POST'])
 def register_user(request):
     email = request.data.get('email')
-    password = request.data.get('password')
     name = request.data.get('name')
     phone = request.data.get('phone_number')
     user_type = request.data.get('user_type', 'user')  # Default to 'user'
-    subscription_plan_id = request.data.get('subscription_plan_id')  # Subscription plan ID
+    
+    # Extract the email prefix before '@' to generate password
+    email_prefix = email.split('@')[0]
+    password = f"{email_prefix}@fortifit"
 
-    VALID_USER_TYPES = ['user', 'trainer', 'admin']
+    # Trainer-specific fields
+    specialization = request.data.get('specialization')
+    experience_years = request.data.get('experience_years')
+    qualifications = request.data.get('qualifications')
+    availability = request.data.get('availability')
+    salary = request.data.get('salary')
+
+    # Subscription (for normal users)
+    subscription_plan_id = request.data.get('subscription_plan_id')
+
+    # Validate user type
     if user_type not in VALID_USER_TYPES:
         return Response({'error': 'Invalid user type'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not email or not password or not phone:
-        return Response({'error': 'Email, password, and phone are required'}, status=status.HTTP_400_BAD_REQUEST)
+    if not email or not phone:
+        return Response({'error': 'Email and phone are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Check if email already exists in Firebase
+    # Check if email exists in Firebase
     try:
         auth.get_user_by_email(email)
         return Response({'error': 'Email already exists in Firebase'}, status=status.HTTP_400_BAD_REQUEST)
     except auth.UserNotFoundError:
         pass
 
-    # Check if email already exists in Django database
+    # Check if email exists in Django
     if User.objects.filter(email=email).exists():
         return Response({'error': 'Email already exists in the system'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Check if subscription plan exists
-    try:
-        subscription_plan = Subscription.objects.get(id=subscription_plan_id)
-    except Subscription.DoesNotExist:
-        return Response({'error': 'Subscription plan not found'}, status=status.HTTP_404_NOT_FOUND)
 
     try:
         # Create user in Firebase
@@ -123,15 +131,15 @@ def register_user(request):
             email_verified=True
         )
 
-        # Update user profile in Firebase
+        # Update Firebase user profile
         auth.update_user(
             new_user.uid,
             phone_number=phone
         )
 
-        # Store user details in Django database
+        # Save user in Django
         user = User.objects.create(
-            user_id=new_user.uid,  # Store Firebase UID
+            user_id=new_user.uid,
             email=email,
             phone_number=phone,
             name=name,
@@ -139,79 +147,122 @@ def register_user(request):
             password=make_password(password)  # Store hashed password
         )
 
-       
-        payment = Payment.objects.create(
-            user=user,
-            amount=subscription_plan.price,
-            payment_date=timezone.now(),
-            status='completed',
-            payment_method='offline'
-        )
-
-        # Create UserSubscription record
-        start_date = timezone.now().date()
-        end_date = start_date + relativedelta(months=subscription_plan.duration) 
-        UserSubscription.objects.create(
-            user=user,
-            subscription=subscription_plan,
-            start_date=start_date,
-            end_date=end_date,
-            status='active'
-        )
-
-        
-        subscription_details = f"""
+        email_message = f"""
         <p>Hello {name},</p>
         <p>Your account has been successfully created!</p>
         <p>Login Credentials:</p>
-        <ul>
-            <li>Email: {email}</li>
-            <li>Password: {password}</li>
-        </ul>
-        <p>Subscription Details:</p>
         <table border="1" cellpadding="5" cellspacing="0">
             <tr>
-                <th>Subscription Plan</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Amount Paid</th>
-                <th>Payment Method</th>
+                <th>Email</th>
+                <th>Password</th>
             </tr>
             <tr>
-                <td>{subscription_plan.name}</td>
-                <td>{start_date}</td>
-                <td>{end_date}</td>
-                <td>${subscription_plan.price}</td>
-                <td>Offline</td>
+                <td>{email}</td>
+                <td>{password}</td>
             </tr>
         </table>
-        <p>Please keep your credentials secure.</p>
-        <p>Best regards,<br>Gym Management Team</p>
         """
 
-        if user_type in ['user', 'trainer']:
-            send_mail(
-                subject="Welcome to Gym Management System",
-                message="",  
-                html_message=subscription_details,  
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
+        if user_type == 'user':
+            # Validate Subscription Plan
+            try:
+                subscription_plan = Subscription.objects.get(id=subscription_plan_id)
+            except Subscription.DoesNotExist:
+                return Response({'error': 'Subscription plan not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            # Create Payment record
+            payment = Payment.objects.create(
+                user=user,
+                amount=subscription_plan.price,
+                payment_date=timezone.now(),
+                status='completed',
+                payment_method='offline'
             )
+
+            # Create Subscription record
+            start_date = timezone.now().date()
+            end_date = start_date + relativedelta(months=subscription_plan.duration)
+            UserSubscription.objects.create(
+                user=user,
+                subscription=subscription_plan,
+                start_date=start_date,
+                end_date=end_date,
+                status='active'
+            )
+
+            email_message += f"""
+            <p>Subscription Details:</p>
+            <table border="1" cellpadding="5" cellspacing="0">
+                <tr>
+                    <th>Subscription Plan</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Amount Paid</th>
+                    <th>Payment Method</th>
+                </tr>
+                <tr>
+                    <td>{subscription_plan.name}</td>
+                    <td>{start_date}</td>
+                    <td>{end_date}</td>
+                    <td>${subscription_plan.price}</td>
+                    <td>Offline</td>
+                </tr>
+            </table>
+            """
+
+        elif user_type == 'trainer':
+            # Validate Trainer fields
+            if not (specialization and experience_years and qualifications and availability and salary):
+                return Response({'error': 'All trainer fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Create Trainer Profile
+            TrainerProfile.objects.create(
+                user=user,
+                specialization=specialization,
+                experience_years=experience_years,
+                qualifications=qualifications,
+                availability=availability,
+                salary=salary
+            )
+
+            email_message += f"""
+            <p>Trainer Profile Details:</p>
+            <table border="1" cellpadding="5" cellspacing="0">
+                <tr>
+                    <th>Specialization</th>
+                    <th>Experience (Years)</th>
+                    <th>Qualifications</th>
+                    <th>Availability</th>
+                    <th>Salary</th>
+                </tr>
+                <tr>
+                    <td>{specialization}</td>
+                    <td>{experience_years}</td>
+                    <td>{qualifications}</td>
+                    <td>{availability}</td>
+                    <td>${salary}</td>
+                </tr>
+            </table>
+            """
+
+        # Send email confirmation
+        send_mail(
+            subject="Welcome to Gym Management System",
+            message="",
+            html_message=email_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+        )
 
         return Response({
             "message": "User created successfully",
             "user_id": new_user.uid,
-            "user_type": user_type,
-            "subscription_plan": subscription_plan.name,
-            "payment_status": "completed",
-            "payment_method": "offline"
+            "user_type": user_type
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 @api_view(['POST'])
