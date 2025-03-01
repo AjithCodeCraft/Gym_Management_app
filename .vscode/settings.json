@@ -1,0 +1,25 @@
+{
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "xprotocol",
+                "enableSsl": "Enabled",
+                "ssl": {
+                    "ca": "C:\\Users\\ajith\\OneDrive\\Desktop\\GYM_MANAGEMENTAPP\\backend\\isrgrootx1.pem",
+                    "cert": "C:\\Users\\ajith\\OneDrive\\Desktop\\GYM_MANAGEMENTAPP\\backend\\isrgrootx1.pem",
+                    "key": "C:\\Users\\ajith\\OneDrive\\Desktop\\GYM_MANAGEMENTAPP\\backend\\isrgrootx1.pem",
+                    "crl": "C:\\Users\\ajith\\OneDrive\\Desktop\\GYM_MANAGEMENTAPP\\backend\\isrgrootx1.pem"
+                }
+            },
+            "previewLimit": 50,
+            "server": "gateway01.us-west-2.prod.aws.tidbcloud.com",
+            "driver": "TiDB",
+            "connectString": "mysql://UdkhssfS4XuhbaK.root:mNfZH7KsAZABTcrZ@gateway01.us-west-2.prod.aws.tidbcloud.com:4000/gymapp_db",
+            "name": "Ajith",
+            "database": "gymapp_db",
+            "username": "UdkhssfS4XuhbaK.root",
+            "connectionTimeout": 10000000000000000000,
+            "password": "mNfZH7KsAZABTcrZ"
+        }
+    ]
+}
