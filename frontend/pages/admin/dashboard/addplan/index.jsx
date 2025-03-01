@@ -1,47 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X, Check, Edit, Trash } from 'lucide-react';
-import axios from 'axios';
+import Cookies from 'js-cookie';
+import api from '../../../api/axios';
 import AdminSidebar from '../sidebar';
 import Navbar from '../navbar';
 
 const SubscriptionPlans = () => {
-  const [plans, setPlans] = useState([
-    {
-      id: 1,
-      name: 'Basic Plan',
-      description: 'Access to gym facilities',
-      duration: '1 Month',
-      personalTraining: false,
-      price: '₹1000',
-    },
-    {
-      id: 2,
-      name: 'Premium Plan',
-      description: 'Access to gym + personal training',
-      duration: '3 Months',
-      personalTraining: true,
-      price: '₹5000',
-    },
-  ]);
-
+  const [plans, setPlans] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    duration: '1 Month',
-    personalTraining: false,
+    duration: '',
+    personal_training: false,
     price: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const token = Cookies.get("access_token");
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    if (!token) {
+      setError("No access token found. Please log in.");
+      return;
+    }
+
+    try {
+      const response = await api.get('subscriptions/', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPlans(response.data);
+    } catch (err) {
+      console.error('Error fetching plans:', err);
+      setError("Failed to fetch plans.");
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: name === "duration" ? parseInt(value, 10) : type === "checkbox" ? checked : value,
     });
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setIsEditMode(false);
+    setError('');
+    setSuccessMessage('');
+    setFormData({
+      name: '',
+      description: '',
+      duration: '',
+      personal_training: false,
+      price: '',
+    });
+  };
+
+  const handleEdit = (plan) => {
+    setSelectedPlan(plan);
+    setFormData({
+      name: plan.name,
+      description: plan.description,
+      duration: plan.duration,
+      personal_training: plan.personal_training,
+      price: plan.price,
+    });
+    setIsEditMode(true);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (plan) => {
+    setSelectedPlan(plan);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!token) {
+      setError("No access token found. Please log in.");
+      return;
+    }
+
+    try {
+      await api.delete(`subscriptions/delete/${selectedPlan.id}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      setPlans(plans.filter(plan => plan.id !== selectedPlan.id));
+      setIsDeleteModalOpen(false);
+      setSelectedPlan(null);
+    } catch (err) {
+      console.error('Error deleting plan:', err);
+      setError("Failed to delete plan.");
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -50,31 +111,50 @@ const SubscriptionPlans = () => {
     setError('');
     setSuccessMessage('');
 
-    try {
-      // Simulate API call
-      const newPlan = { ...formData, id: plans.length + 1 };
-      setPlans([...plans, newPlan]);
+    if (!token) {
+      setError("No access token found. Please log in.");
+      setLoading(false);
+      return;
+    }
 
-      setSuccessMessage('Plan added successfully!');
+    try {
+      let response;
+
+      if (isEditMode) {
+        // Update existing plan
+        response = await api.put(
+          `subscriptions/edit/${selectedPlan.id}/`,
+          formData,
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+        );
+
+        // Update the plan in the state
+        setPlans(plans.map(plan => plan.id === selectedPlan.id ? response.data : plan));
+        setSuccessMessage('Plan updated successfully!');
+      } else {
+        // Add new plan
+        response = await api.post(
+          'subscriptions/add/',
+          formData,
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+        );
+
+        setPlans([...plans, response.data]);
+        setSuccessMessage('Plan added successfully!');
+      }
+      
+      // Close modal and reset form after success
       setTimeout(() => {
-        setIsModalOpen(false);
-        setFormData({
-          name: '',
-          description: '',
-          duration: '1 Month',
-          personalTraining: false,
-          price: '',
-        });
-      }, 2000);
+        closeModal();
+        // Refresh the plans list
+        fetchPlans();
+      }, 1000);
     } catch (err) {
-      setError('Failed to add plan. Please try again.');
+      console.error('Error saving plan:', err);
+      setError(isEditMode ? "Failed to update plan." : "Failed to add plan.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDelete = (id) => {
-    setPlans(plans.filter((plan) => plan.id !== id));
   };
 
   return (
@@ -90,7 +170,10 @@ const SubscriptionPlans = () => {
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-gray-800">Subscription Plans</h1>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setIsEditMode(false);
+                  setIsModalOpen(true);
+                }}
                 className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition duration-300"
               >
                 <Plus className="h-5 w-5 mr-2" />
@@ -136,21 +219,24 @@ const SubscriptionPlans = () => {
                         {plan.duration}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {plan.personalTraining ? (
+                        {plan.personal_training ? (
                           <Check className="h-5 w-5 text-green-500" />
                         ) : (
                           <X className="h-5 w-5 text-red-500" />
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {plan.price}
+                        ₹{plan.price}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-orange-500 hover:text-orange-700 mr-4">
+                        <button 
+                          onClick={() => handleEdit(plan)} 
+                          className="text-orange-500 hover:text-orange-700 mr-4"
+                        >
                           <Edit className="h-5 w-5" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(plan.id)}
+                        <button 
+                          onClick={() => handleDelete(plan)}
                           className="text-red-500 hover:text-red-700"
                         >
                           <Trash className="h-5 w-5" />
@@ -163,14 +249,16 @@ const SubscriptionPlans = () => {
             </div>
           </div>
 
-          {/* Add Plan Modal */}
+          {/* Add/Edit Plan Modal */}
           {isModalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
                 <div className="flex justify-between items-center p-6 border-b">
-                  <h2 className="text-xl font-bold text-gray-800">Add Subscription Plan</h2>
+                  <h2 className="text-xl font-bold text-gray-800">
+                    {isEditMode ? 'Edit Subscription Plan' : 'Add Subscription Plan'}
+                  </h2>
                   <button
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={closeModal}
                     className="text-gray-500 hover:text-gray-700"
                   >
                     <X className="h-6 w-6" />
@@ -213,11 +301,10 @@ const SubscriptionPlans = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-md p-2"
                       required
                     >
-                      <option value="1 Month">1 Month</option>
-                      <option value="2 Months">2 Months</option>
-                      <option value="3 Months">3 Months</option>
-                      <option value="6 Months">6 Months</option>
-                      <option value="12 Months">12 Months</option>
+                      <option value={1}>1 Month</option>
+                      <option value={3}>3 Months</option>
+                      <option value={6}>6 Months</option>
+                      <option value={12}>12 Months</option>
                     </select>
                   </div>
 
@@ -225,8 +312,8 @@ const SubscriptionPlans = () => {
                   <div className="flex items-center">
                     <input
                       type="checkbox"
-                      name="personalTraining"
-                      checked={formData.personalTraining}
+                      name="personal_training"
+                      checked={formData.personal_training}
                       onChange={handleChange}
                       className="h-4 w-4 text-orange-500 border-gray-300 rounded"
                     />
@@ -252,17 +339,52 @@ const SubscriptionPlans = () => {
                     <p className="text-green-500 text-sm">{successMessage}</p>
                   )}
 
-                  {/* Submit Button */}
-                  <div className="flex justify-end">
+                  {/* Submit and Cancel Buttons */}
+                  <div className="flex justify-end space-x-4">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition duration-300"
+                    >
+                      Cancel
+                    </button>
                     <button
                       type="submit"
                       disabled={loading}
                       className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition duration-300"
                     >
-                      {loading ? 'Adding...' : 'Add Plan'}
+                      {loading ? (isEditMode ? 'Updating...' : 'Adding...') : (isEditMode ? 'Update Plan' : 'Add Plan')}
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {isDeleteModalOpen && selectedPlan && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-4">Confirm Deletion</h2>
+                  <p className="mb-6 text-gray-600">
+                    Are you sure you want to delete the plan "{selectedPlan.name}"? This action cannot be undone.
+                  </p>
+                  <div className="flex justify-end space-x-4">
+                    <button
+                      onClick={() => setIsDeleteModalOpen(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition duration-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmDelete}
+                      className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition duration-300"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
