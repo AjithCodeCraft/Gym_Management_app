@@ -1,43 +1,76 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign } from 'lucide-react';
 import Link from "next/link";
 import Navbar from './navbar';
 import AdminSidebar from './sidebar';
+import api from "../../api/axios";
+import Cookies from 'js-cookie';
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("members");
+  const [users, setUsers] = useState([]);
+  const [trainers, setTrainers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const accessToken = Cookies.get('access_token');
+
+        if (!accessToken) {
+          console.error('Access token not found');
+          return;
+        }
+
+        const usersResponse = await api.get('users/', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        setUsers(usersResponse.data);
+
+        const trainersResponse = await api.get('trainers/', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        setTrainers(trainersResponse.data);
+      } catch (error) {
+        console.error('Error fetching users or trainers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const parseDate = (dateString) => {
-    const [day, month, year] = dateString.split('/');
-    return new Date(`${year}-${month}-${day}`);
+    return new Date(dateString);
   };
 
   const formatDate = (date) => {
     return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const users = [
-    { id: 1, name: "John Doe", email: "john@example.com", userType: "member", gender: "male", phone: "+1234567890", plan: "3 Months", endDate: parseDate("2025-05-15"), isActive: true, joinDate: parseDate("2024-01-15") },
-    { id: 2, name: "Jane Smith", email: "jane@example.com", userType: "member", gender: "female", phone: "+0987654321", plan: "1 Month", endDate: parseDate("2025-03-20"), isActive: true, joinDate: parseDate("2024-01-20") },
-    { id: 3, name: "Mike Johnson", email: "mike@example.com", userType: "trainer", gender: "male", phone: "+1239874560", specialization: "Strength Training", isActive: true, joinDate: parseDate("2024-01-05") },
-    { id: 4, name: "Sara Williams", email: "sara@example.com", userType: "trainer", gender: "female", phone: "+3216549870", specialization: "Yoga & Flexibility", isActive: true, joinDate: parseDate("2023-12-10") },
-    { id: 5, name: "Robert Chen", email: "robert@example.com", userType: "member", gender: "male", phone: "+4567891230", plan: "Personal Training", endDate: parseDate("2025-04-12"), isActive: true, joinDate: parseDate("2024-02-12") }
-  ];
-
-  const members = users.filter(user => user.userType === "member");
-  const trainers = users.filter(user => user.userType === "trainer");
-
   const filteredUsers = activeTab === "members"
-    ? members.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? users.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase()))
     : trainers.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const stats = {
-    totalMembers: members.length,
+    totalMembers: users.length,
     totalTrainers: trainers.length,
-    activeMembers: members.filter(u => u.isActive).length,
-    totalRevenue: 74800
+    activeMembers: users.filter(u => u.is_active).length,
+    totalRevenue: users.reduce((total, member) => {
+      const activeSubscriptions = member.subscriptions.filter(sub => sub.status === 'active');
+      return total + activeSubscriptions.reduce((subTotal, sub) => subTotal + parseFloat(sub.subscription.price), 0);
+    }, 0)
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50 py-6">
@@ -118,7 +151,7 @@ const Dashboard = () => {
                       </div>
                       <div className="ml-4">
                         <p className="text-sm font-medium text-gray-500">Total Revenue</p>
-                        <h3 className="text-2xl font-bold text-gray-900">₹{stats.totalRevenue}</h3>
+                        <h3 className="text-2xl font-bold text-gray-900">₹{stats.totalRevenue.toFixed(2)}</h3>
                       </div>
                     </div>
                   </div>
@@ -209,28 +242,22 @@ const Dashboard = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{user.email}</div>
-                            <div className="text-xs text-gray-500">{user.phone}</div>
+                            <div className="text-xs text-gray-500">{user.phone_number}</div>
                           </td>
 
                           {activeTab === "members" ? (
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-1 text-xs rounded-md ${
-                                  user.plan === "Personal Training"
-                                    ? "bg-purple-100 text-purple-800"
-                                    : user.plan === "1 Year"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-blue-100 text-blue-800"
-                                }`}>
-                                  {user.plan}
+                                <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800">
+                                  {user.subscriptions.map(sub => sub.subscription.name).join(', ')}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {formatDate(user.endDate)}
+                                {user.subscriptions.map(sub => formatDate(parseDate(sub.end_date))).join(', ')}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                  Active
+                                  {user.is_active ? 'Active' : 'Inactive'}
                                 </span>
                               </td>
                             </>
@@ -238,19 +265,19 @@ const Dashboard = () => {
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
-                                  {user.specialization}
+                                  {user.trainer_profile ? user.trainer_profile.specialization : 'N/A'}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                  Active
+                                  {user.is_active ? 'Active' : 'Inactive'}
                                 </span>
                               </td>
                             </>
                           )}
 
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(user.joinDate)}
+                            {formatDate(parseDate(user.created_at))}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="relative inline-block text-left">
@@ -268,7 +295,7 @@ const Dashboard = () => {
                 <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
                   <div className="text-sm text-gray-500">
                     Showing <span className="font-medium">{filteredUsers.length}</span> of{" "}
-                    <span className="font-medium">{activeTab === "members" ? members.length : trainers.length}</span> {activeTab}
+                    <span className="font-medium">{activeTab === "members" ? users.length : trainers.length}</span> {activeTab}
                   </div>
                   <div className="flex space-x-2">
                     <button className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-500">

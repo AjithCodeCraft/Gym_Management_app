@@ -1,4 +1,5 @@
 import random
+from uuid import UUID
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from django.shortcuts import render
@@ -14,7 +15,7 @@ import requests
 import jwt
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import SubscriptionSerializer
+from .serializers import SubscriptionSerializer, UserSerializer
 # Create your views here.
 
 
@@ -89,11 +90,14 @@ def register_user(request):
     email = request.data.get('email')
     name = request.data.get('name')
     phone = request.data.get('phone_number')
-    user_type = request.data.get('user_type', 'user')  # Default to 'user'
+    user_type = request.data.get('user_type', 'user')  
     
-    # Extract the email prefix before '@' to generate password
-    email_prefix = email.split('@')[0]
-    password = f"{email_prefix}@fortifit"
+    # Set password based on user type
+    if user_type == 'admin':
+        password = request.data.get('password')
+    else:
+        email_prefix = email.split('@')[0]
+        password = f"{email_prefix}@fortifit"
 
     # Trainer-specific fields
     specialization = request.data.get('specialization')
@@ -265,6 +269,7 @@ def register_user(request):
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
 @api_view(['POST'])
 def send_password_reset_email(request):
     email = request.data.get('email')
@@ -349,7 +354,7 @@ def login_user(request):
 
 @api_view(['GET'])
 def list_subscriptions(request):
-    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "trainer":
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
         return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
     subscriptions = Subscription.objects.all()
@@ -360,11 +365,92 @@ def list_subscriptions(request):
 
 @api_view(['POST'])
 def add_subscription(request):
-    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "trainer":
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
         return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
-    serializer = SubscriptionSerializer(data=request.data)
+    data = request.data.copy()
+    if data.get("personal_training"):
+        data["price"] = float(data.get("price", 0)) + 5000
+
+    serializer = SubscriptionSerializer(data=data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+@api_view(['PUT'])
+def update_subscription(request, subscription_id):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        subscription = Subscription.objects.get(id=subscription_id)
+    except Subscription.DoesNotExist:
+        return Response({"detail": "Subscription not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    data = request.data.copy()
+
+    if "personal_training" in data:
+        new_personal_training = data.get("personal_training")
+        if bool(new_personal_training) != subscription.personal_training:
+            if new_personal_training:
+                data["price"] = float(data.get("price", subscription.price)) + 5000
+            else:
+                data["price"] = max(float(data.get("price", subscription.price)) - 5000, 0)
+
+    serializer = SubscriptionSerializer(subscription, data=data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+@api_view(['DELETE'])
+def delete_subscription(request, subscription_id):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        subscription = Subscription.objects.get(id=subscription_id)
+    except Subscription.DoesNotExist:
+        return Response({"detail": "Subscription not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    subscription.delete()
+    return Response({"detail": "Subscription deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+@api_view(['GET'])
+def list_users(request):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    users = User.objects.filter(user_type="user")
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def list_trainers(request):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    trainers = User.objects.filter(user_type="trainer")
+    serializer = UserSerializer(trainers, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+@api_view(['DELETE'])
+def delete_all(request):
+    User.objects.all().delete()
+    return Response({"message": "All users deleted."}, status=status.HTTP_200_OK)
