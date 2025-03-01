@@ -1,18 +1,26 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import { LinearGradient } from "expo-linear-gradient";
+import { gymQuotes } from "../quotes"; // Import the quotes
 
 export default function HomeScreen() {
-  // Sample data for infinite streak
+  // State for BMI Calculator
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("Male");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
+  const [bmi, setBmi] = useState("");
+  const [bmiLevel, setBmiLevel] = useState("");
+
+  // State for Streak Tracker
   const [streakData, setStreakData] = useState({
     currentStreak: 12, // Infinite streak counter
     daysThisWeek: [true, true, true, true, false, false, null], // Attendance for the week
     lastUpdated: "Today at 8:30 AM",
   });
 
-  // Sample data for sleep tracking
+  // State for Sleep Tracking
   const [sleepData, setSleepData] = useState({
     lastSleepDuration: "7h 30m",
     lastSleepDate: "Last Night",
@@ -29,14 +37,48 @@ export default function HomeScreen() {
     { value: 2, color: "#e5e7eb", label: "Absent" }, // Gray for absent
   ];
 
-  // Quote of the day
-  const quoteOfDay = {
-    text: "The only bad workout is the one you didn't do.",
-    author: "Unknown",
+  // Function to get the quote of the day
+  const getQuoteOfTheDay = () => {
+    const today = new Date();
+    const startOfYear = new Date(today.getFullYear(), 0, 0); // Start of the year
+    const dayOfYear = Math.floor(
+      (today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24) // Calculate day of the year
+    );
+    const quoteIndex = dayOfYear % gymQuotes.length; // Ensure it stays within the array bounds
+    return gymQuotes[quoteIndex];
+  };
+
+  const quoteOfDay = getQuoteOfTheDay(); // Get today's quote
+
+  // Function to calculate BMI
+  const calculateBMI = () => {
+    if (!age || !height || !weight) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    const heightInMeters = parseFloat(height) / 100;
+    const bmiValue = (parseFloat(weight) / (heightInMeters * heightInMeters)).toFixed(2);
+    setBmi(bmiValue);
+
+    // Determine BMI level
+    const bmiNumber = parseFloat(bmiValue);
+    if (bmiNumber < 18.5) {
+      setBmiLevel("Underweight");
+    } else if (bmiNumber >= 18.5 && bmiNumber < 25) {
+      setBmiLevel("Normal");
+    } else if (bmiNumber >= 25 && bmiNumber < 30) {
+      setBmiLevel("Overweight");
+    } else {
+      setBmiLevel("Obesity");
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
+      {/* BMI Calculator Section */}
+      
+
       {/* Streak Tracker Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Streak 🔥</Text>
@@ -86,7 +128,6 @@ export default function HomeScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-
         {/* Sleep History */}
         <View style={styles.sleepHistoryContainer}>
           <Text style={styles.sleepHistoryTitle}>Sleep History</Text>
@@ -98,9 +139,125 @@ export default function HomeScreen() {
           ))}
         </View>
       </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>BMI Calculator</Text>
+        {/* Age Input */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Age</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="25"
+            keyboardType="numeric"
+            value={age}
+            onChangeText={setAge}
+          />
+          <Text style={styles.note}>Ages: 2 - 120</Text>
+        </View>
+        {/* Gender Input */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Gender</Text>
+          <View style={styles.genderContainer}>
+            <TouchableOpacity
+              style={[
+                styles.genderButton,
+                gender === "Male" && styles.selectedGender,
+              ]}
+              onPress={() => setGender("Male")}
+            >
+              <Text style={styles.genderText}>Male</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.genderButton,
+                gender === "Female" && styles.selectedGender,
+              ]}
+              onPress={() => setGender("Female")}
+            >
+              <Text style={styles.genderText}>Female</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {/* Height Input */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Height (cm)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="180"
+            keyboardType="numeric"
+            value={height}
+            onChangeText={setHeight}
+          />
+        </View>
+        {/* Weight Input */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Weight (kg)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="65"
+            keyboardType="numeric"
+            value={weight}
+            onChangeText={setWeight}
+          />
+        </View>
+        {/* Calculate Button */}
+        <TouchableOpacity style={styles.calculateButton} onPress={calculateBMI}>
+          <LinearGradient
+            colors={["#f97316", "#ea580c"]}
+            style={styles.gradientButton}
+          >
+            <Text style={styles.calculateButtonText}>Calculate</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        {/* BMI Result */}
+        {bmi && (
+          <View style={styles.resultContainer}>
+            <Text style={styles.resultText}>Your BMI: {bmi}</Text>
+            <Text style={[styles.resultLevel, getBmiLevelStyle(bmiLevel)]}>
+              Level: {bmiLevel}
+            </Text>
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
+
+interface StreakData {
+  currentStreak: number;
+  daysThisWeek: (boolean | null)[];
+  lastUpdated: string;
+}
+
+interface SleepHistory {
+  date: string;
+  duration: string;
+}
+
+interface SleepData {
+  lastSleepDuration: string;
+  lastSleepDate: string;
+  sleepHistory: SleepHistory[];
+}
+
+interface Quote {
+  text: string;
+  author: string;
+}
+
+const getBmiLevelStyle = (level: string): object => {
+  switch (level) {
+    case "Underweight":
+      return styles.underweight;
+    case "Normal":
+      return styles.normal;
+    case "Overweight":
+      return styles.overweight;
+    case "Obesity":
+      return styles.obesity;
+    default:
+      return {};
+  }
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -120,6 +277,92 @@ const styles = StyleSheet.create({
     color: "#1f2937",
     marginBottom: 16,
   },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1f2937",
+    marginBottom: 8,
+  },
+  input: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#ffffff",
+  },
+  note: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 4,
+  },
+  genderContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  genderButton: {
+    flex: 1,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 8,
+    marginHorizontal: 4,
+    backgroundColor: "#ffffff",
+  },
+  selectedGender: {
+    borderColor: "#f97316",
+    backgroundColor: "#fff7ed",
+  },
+  genderText: {
+    fontSize: 16,
+    color: "#1f2937",
+  },
+  calculateButton: {
+    width: "100%",
+    marginTop: 16,
+  },
+  gradientButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  calculateButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  resultContainer: {
+    marginTop: 24,
+    alignItems: "center",
+  },
+  resultText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  resultLevel: {
+    fontSize: 16,
+    color: "#6b7280",
+    marginTop: 8,
+  },
+  underweight: {
+    color: "red",
+  },
+  normal: {
+    color: "green",
+  },
+  overweight: {
+    color: "orange",
+  },
+  obesity: {
+    color: "red",
+  },
   chartContainer: {
     alignItems: "center",
     justifyContent: "center",
@@ -133,8 +376,7 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -50 }, { translateY: -30 }],
     alignItems: "center",
     justifyContent: "center",
-},
-
+  },
   streakNumber: {
     fontSize: 32,
     fontWeight: "bold",
@@ -189,12 +431,6 @@ const styles = StyleSheet.create({
   startSleepButton: {
     width: "100%",
     marginTop: 16,
-  },
-  gradientButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: "center",
   },
   startSleepButtonText: {
     fontSize: 16,

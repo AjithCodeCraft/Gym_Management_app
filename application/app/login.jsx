@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Image, Alert, Modal, StyleSheet } from "react-native";
 import { Redirect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons"; // For icons
 
@@ -7,13 +7,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
   const handleLogin = () => {
     // Dummy login logic
-    if (email === "ajith@gmail.com" && password === "ajith") {
+    if (email === "ajithsa909@gmail.com" && password === "1122") {
       setIsLoggedIn(true); // Set login state to true
     } else {
       Alert.alert("Invalid Credentials", "Please check your email and password.");
+    }
+  };
+
+  const handleForgotPassword = () => {
+    // Dummy logic to send reset link
+    if (forgotPasswordEmail) {
+      Alert.alert("Reset Link Sent", `A reset link has been sent to ${forgotPasswordEmail}`);
+      setIsForgotPasswordModalVisible(false);
+    } else {
+      Alert.alert("Error", "Please enter your email address.");
     }
   };
 
@@ -23,31 +35,32 @@ export default function LoginPage() {
   }
 
   return (
-    <View className="h-screen flex flex-col lg:flex-row">
+    <View style={styles.container}>
       {/* Left Side - Login Form */}
-      <View className="flex-1 p-6 md:p-10 justify-center">
+      <View style={styles.loginForm}>
         {/* Logo and Brand Name */}
-        <View className="flex-row justify-center md:justify-start items-center mb-8">
-          <View className="w-6 h-6 rounded-md bg-orange-500 justify-center items-center mr-2">
-            <MaterialIcons name="dashboard" size={16} color="white" />
-          </View>
-          <Text className="text-lg font-medium">Acme Inc.</Text>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require("../assets/images/g308.png")} // Replace with your image path
+            style={styles.logo}
+          />
+          <Text style={styles.brandName}>FORTiFit.</Text>
         </View>
 
         {/* Login Form */}
-        <View className="w-full max-w-xs mx-auto">
-          <View className="items-center mb-6">
-            <Text className="text-2xl font-bold mb-2">Login to your account</Text>
-            <Text className="text-sm text-gray-500 text-center">
+        <View style={styles.formContainer}>
+          <View style={styles.formHeader}>
+            <Text style={styles.formTitle}>Login to your account</Text>
+            <Text style={styles.formSubtitle}>
               Enter your email below to login to your account
             </Text>
           </View>
 
           {/* Email Input */}
-          <View className="mb-4">
-            <Text className="text-sm font-medium mb-1">Email</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email</Text>
             <TextInput
-              className="h-10 border border-gray-300 rounded-md px-3"
+              style={styles.input}
               placeholder="m@example.com"
               value={email}
               onChangeText={setEmail}
@@ -57,15 +70,15 @@ export default function LoginPage() {
           </View>
 
           {/* Password Input */}
-          <View className="mb-6">
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-sm font-medium">Password</Text>
-              <TouchableOpacity>
-                <Text className="text-sm text-orange-500 underline">Forgot your password?</Text>
+          <View style={styles.inputContainer}>
+            <View style={styles.passwordHeader}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TouchableOpacity onPress={() => setIsForgotPasswordModalVisible(true)}>
+                <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
               </TouchableOpacity>
             </View>
             <TextInput
-              className="h-10 border border-gray-300 rounded-md px-3"
+              style={styles.input}
               placeholder="Enter your password"
               value={password}
               onChangeText={setPassword}
@@ -74,30 +87,213 @@ export default function LoginPage() {
           </View>
 
           {/* Login Button */}
-          <TouchableOpacity
-            className="w-full h-10 bg-orange-500 rounded-md justify-center items-center"
-            onPress={handleLogin}
-          >
-            <Text className="text-white font-medium">Login</Text>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
 
           {/* Sign Up Link */}
-          <View className="flex-row justify-center mt-6">
-            <Text className="text-sm text-gray-500">Don't have an account? </Text>
+          {/* <View style={styles.signUpContainer}>
+            <Text style={styles.signUpText}>Don't have an account? </Text>
             <TouchableOpacity>
-              <Text className="text-sm text-orange-500 underline">Sign up</Text>
+              <Text style={styles.signUpLink}>Sign up</Text>
             </TouchableOpacity>
-          </View>
+          </View> */}
         </View>
       </View>
 
       {/* Right Side - Image (Hidden on small screens) */}
-      <View className="hidden lg:flex flex-1">
+      <View style={styles.imageContainer}>
         <Image
           source={{ uri: "https://via.placeholder.com/1920x1080" }} // Replace with your image URL
-          className="w-full h-full"
+          style={styles.image}
         />
       </View>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={isForgotPasswordModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsForgotPasswordModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Forgot Password</Text>
+            <Text style={styles.modalSubtitle}>
+              Enter your email address and we'll send you a link to reset your password.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter your email"
+              value={forgotPasswordEmail}
+              onChangeText={setForgotPasswordEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TouchableOpacity style={styles.modalButton} onPress={handleForgotPassword}>
+              <Text style={styles.modalButtonText}>Send Reset Link</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setIsForgotPasswordModalVisible(false)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  loginForm: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
+  },
+  logoContainer: {
+    alignItems: "center", // Center the logo and brand name
+    marginBottom: 32,
+  },
+  logo: {
+    width: 80, // Adjust the width of the logo
+    height: 80, // Adjust the height of the logo
+    marginBottom: 16, // Space between logo and brand name
+  },
+  brandName: {
+    fontSize: 24, // Increase font size for brand name
+    fontWeight: "bold", // Make it bold
+    color: "#f97316", // Brand color
+  },
+  formContainer: {
+    width: "100%",
+    maxWidth: 320,
+    alignSelf: "center",
+  },
+  formHeader: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  formSubtitle: {
+    fontSize: 14,
+    color: "gray",
+    textAlign: "center",
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  input: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  passwordHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: "#f97316",
+    textDecorationLine: "underline",
+  },
+  loginButton: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#f97316",
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 16,
+  },
+  loginButtonText: {
+    color: "white",
+    fontWeight: "500",
+  },
+  signUpContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 24,
+  },
+  signUpText: {
+    fontSize: 14,
+    color: "gray",
+  },
+  signUpLink: {
+    fontSize: 14,
+    color: "orange",
+    textDecorationLine: "underline",
+  },
+  imageContainer: {
+    flex: 1,
+    display: "none", // Hidden on small screens
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Dimmed background
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 16,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "gray",
+    marginBottom: 16,
+  },
+  modalInput: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  modalButton: {
+    width: "100%",
+    height: 40,
+    backgroundColor: "#f97316",
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalButtonText: {
+    color: "white",
+    fontWeight: "500",
+  },
+  modalCancelText: {
+    fontSize: 14,
+    color: "orange",
+    textAlign: "center",
+    textDecorationLine: "underline",
+  },
+});
