@@ -87,7 +87,7 @@ const AddMember = () => {
     setLoading(true);
     setError('');
     setSuccessMessage('');
-
+  
     // Check if the selected plan ID exists
     const selectedPlan = plans.find(plan => plan.id === formData.subscription_plan_id);
     if (!selectedPlan) {
@@ -95,35 +95,38 @@ const AddMember = () => {
       setLoading(false);
       return;
     }
-
+  
     // Ensure gender is set
     if (!formData.gender) {
       setError('Please select a gender.');
       setLoading(false);
       return;
     }
-
+  
     try {
       const response = await api.post('register/', {
         ...formData,
         user_type: 'user',
       });
-
-      if (response.data.success) {
+  
+      if (response.data.message === "User created successfully") {
         setSuccessMessage('Member added successfully! Login credentials sent to their email.');
         setTimeout(() => {
-          router.push('dashboard');
+          router.push('');
         }, 3000);
       } else {
-        setError(response.data.message || 'Failed to add member.');
+        // Handle specific error messages from the backend
+        setError(response.data.error || 'Failed to add member.');
       }
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
+      console.error('Registration error:', err); // Log the full error object
+      if (err.response && err.response.data) {
+        // Handle error response from the backend
+        setError(err.response.data.error || 'An error occurred while registering the member.');
       } else {
+        // Handle network or other errors
         setError('An error occurred while registering the member.');
       }
-      console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }

@@ -119,13 +119,13 @@ def register_user(request):
     # Check if email exists in Firebase
     try:
         auth.get_user_by_email(email)
-        return Response({'error': 'Email already exists in Firebase'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
     except auth.UserNotFoundError:
         pass
 
     # Check if email exists in Django
     if User.objects.filter(email=email).exists():
-        return Response({'error': 'Email already exists in the system'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         # Create user in Firebase
