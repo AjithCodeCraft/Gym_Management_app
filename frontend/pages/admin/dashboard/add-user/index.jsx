@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { User, Plus, ArrowLeft, Mail, Loader, AlertCircle } from 'lucide-react';
-import api from "../../../api/axios";
 import AdminSidebar from '../sidebar';
 import Navbar from '../navbar';
-import Cookies from 'js-cookie';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { Button } from "@/components/ui/button";
 
 const AddMember = () => {
   const router = useRouter();
@@ -19,63 +30,17 @@ const AddMember = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [plans, setPlans] = useState([]);
-  const [fetchingPlans, setFetchingPlans] = useState(true);
-  const [authError, setAuthError] = useState('');
 
-  // Fetch subscription plans from API with authentication
-  useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        setFetchingPlans(true);
-        setAuthError('');
+  // OTP-related states
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [isOtpDialogOpen, setIsOtpDialogOpen] = useState(false);
+  const [otpButtonText, setOtpButtonText] = useState("Get OTP");
+  const [otpButtonColor, setOtpButtonColor] = useState("bg-[#ea580c]");
 
-        // Get access token from cookies
-        const accessToken = Cookies.get('access_token');
-
-        if (!accessToken) {
-          setAuthError('Access denied. No authentication token found.');
-          setFetchingPlans(false);
-          return;
-        }
-
-        // Set up request with authorization header
-        const response = await api.get('subscriptions/', {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        });
-
-        if (response.data) {
-          // Check if the response is an array or if it has a specific property containing plans
-          const plansData = Array.isArray(response.data) ? response.data :
-                           response.data.plans ? response.data.plans : [];
-
-          setPlans(plansData);
-
-          // Set default plan to first plan if available
-          if (plansData.length > 0) {
-            setFormData(prev => ({ ...prev, subscription_plan_id: plansData[0].id }));
-          }
-        } else {
-          setError('Failed to load subscription plans.');
-        }
-      } catch (err) {
-        if (err.response && err.response.status === 401) {
-          setAuthError('Access denied. Your session may have expired. Please log in again.');
-        } else if (err.response && err.response.status === 403) {
-          setAuthError('You do not have permission to access subscription data.');
-        } else {
-          setError('Error fetching subscription plans. Please try again.');
-        }
-        console.error('Failed to fetch plans:', err);
-      } finally {
-        setFetchingPlans(false);
-      }
-    };
-
-    fetchPlans();
-  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -87,63 +52,55 @@ const AddMember = () => {
     setLoading(true);
     setError('');
     setSuccessMessage('');
-  
-    // Check if the selected plan ID exists
-    const selectedPlan = plans.find(plan => plan.id === formData.subscription_plan_id);
-    if (!selectedPlan) {
-      setError('Selected subscription plan not found.');
+
+    if (!otpVerified) {
+      setError('Please verify your email with OTP.');
       setLoading(false);
       return;
     }
-  
-    // Ensure gender is set
-    if (!formData.gender) {
-      setError('Please select a gender.');
+
+    // Simulate form submission
+    setTimeout(() => {
+      setSuccessMessage('Member added successfully!');
       setLoading(false);
-      return;
-    }
-  
-    try {
-      const response = await api.post('register/', {
-        ...formData,
-        user_type: 'user',
-      });
-  
-      if (response.data.message === "User created successfully") {
-        setSuccessMessage('Member added successfully! Login credentials sent to their email.');
-        setTimeout(() => {
-          router.push('');
-        }, 3000);
-      } else {
-        // Handle specific error messages from the backend
-        setError(response.data.error || 'Failed to add member.');
-      }
-    } catch (err) {
-      console.error('Registration error:', err); // Log the full error object
-      if (err.response && err.response.data) {
-        // Handle error response from the backend
-        setError(err.response.data.error || 'An error occurred while registering the member.');
-      } else {
-        // Handle network or other errors
-        setError('An error occurred while registering the member.');
-      }
-    } finally {
-      setLoading(false);
+    }, 2000);
+  };
+
+  // OTP Functions (Frontend-only)
+  const handleGetOtp = () => {
+    // Simulate sending OTP
+    setOtpSent(true);
+    setIsOtpDialogOpen(true);
+    setCountdown(45); // Start the countdown
+    setOtpError('');
+  };
+
+  const handleVerifyOtp = () => {
+    // Simulate OTP verification
+    if (otp === "123456") { // Mock OTP value
+      setOtpVerified(true);
+      setIsOtpDialogOpen(false);
+      setOtpError("");
+      setOtpButtonText("Verified");
+      setOtpButtonColor("bg-blue-500");
+    } else {
+      setOtpError("Invalid OTP. Please try again.");
     }
   };
 
-  const handleLogin = () => {
-    router.push('/login');
+  const handleResendOtp = () => {
+    // Simulate resending OTP
+    setCountdown(45); // Reset the countdown
+    setOtpError('');
+    setOtp('');
   };
 
-  // Format the price to Indian Rupees
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    }).format(price);
-  };
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -165,45 +122,22 @@ const AddMember = () => {
               <h1 className="text-2xl font-bold ml-4 text-gray-800">Add Member</h1>
             </div>
 
-            {authError ? (
-              <div className="bg-red-50 p-6 rounded-lg">
-                <div className="flex items-center mb-3">
-                  <AlertCircle className="h-6 w-6 text-red-500 mr-2" />
-                  <h3 className="font-semibold text-red-700">Authentication Error</h3>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    required
+                  />
                 </div>
-                <p className="text-red-600 mb-4">{authError}</p>
-                <button
-                  onClick={handleLogin}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  Go to Login
-                </button>
-              </div>
-            ) : fetchingPlans ? (
-              <div className="flex justify-center items-center py-10">
-                <Loader className="h-8 w-8 animate-spin text-blue-500" />
-                <p className="ml-3 text-gray-600">Loading subscription plans...</p>
-              </div>
-            ) : plans.length === 0 ? (
-              <div className="bg-yellow-50 p-4 rounded-lg text-yellow-700 mb-6">
-                No subscription plans found. Please check the subscription configuration.
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <div className="flex gap-2">
                     <input
                       type="email"
                       name="email"
@@ -212,95 +146,124 @@ const AddMember = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                       required
                     />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input
-                      type="text"
-                      name="phone_number"
-                      value={formData.phone_number}
-                      onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                    <input
-                      type="date"
-                      name="date_of_birth"
-                      value={formData.date_of_birth}
-                      onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                    <select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="others">Others</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Gym Plan</label>
-                    <select
-                      name="subscription_plan_id"
-                      value={formData.subscription_plan_id}
-                      onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      required
-                    >
-                      {plans.map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.name} - {formatPrice(plan.price)}
-                          {plan.duration ? ` (${plan.duration} months)` : ''}
-                          {plan.personal_training ? ' with PT' : ''}
-                        </option>
-                      ))}
-                    </select>
+                  <Button
+  type="button"
+  onClick={handleGetOtp}
+  className={`px-4 py-2 ${otpButtonColor} text-white rounded-lg hover:bg-[#d94a0a] transition-colors`} // Use hover:bg-[#d94a0a] for hover state
+  disabled={otpVerified}
+>
+  {otpButtonText}
+</Button>
                   </div>
                 </div>
-
-                {error && (
-                  <div className="bg-red-50 p-3 rounded-lg flex items-center text-red-600 text-sm">
-                    <span className="mr-2">⚠️</span>
-                    {error}
-                  </div>
-                )}
-                {successMessage && (
-                  <div className="bg-green-50 p-3 rounded-lg flex items-center text-green-600 text-sm">
-                    <Mail className="h-4 w-4 mr-2" />
-                    {successMessage}
-                  </div>
-                )}
-
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    name="phone_number"
+                    value={formData.phone_number}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    name="date_of_birth"
+                    value={formData.date_of_birth}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                   >
-                    {loading ? (
-                      <Loader className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2" />
-                    )}
-                    {loading ? 'Adding...' : 'Add Member'}
-                  </button>
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="others">Others</option>
+                  </select>
                 </div>
-              </form>
-            )}
+              </div>
+
+              {error && (
+                <div className="bg-red-50 p-3 rounded-lg flex items-center text-red-600 text-sm">
+                  <span className="mr-2">⚠️</span>
+                  {error}
+                </div>
+              )}
+              {successMessage && (
+                <div className="bg-green-50 p-3 rounded-lg flex items-center text-green-600 text-sm">
+                  <Mail className="h-4 w-4 mr-2" />
+                  {successMessage}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={loading || !otpVerified}
+                  className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105"
+                >
+                  {loading ? (
+                    <Loader className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  {loading ? 'Adding...' : 'Add Member'}
+                </button>
+              </div>
+            </form>
           </div>
         </main>
       </div>
+
+      {/* OTP Dialog */}
+      <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>Enter OTP</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-sm text-gray-600">OTP sent to: {formData.email}</p>
+            <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)}>
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+              </InputOTPGroup>
+              <InputOTPSeparator />
+              <InputOTPGroup>
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+            {otpError && <span className="text-red-600 text-sm">{otpError}</span>}
+            <div className="flex justify-between w-full">
+              <Button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={countdown > 0}
+                variant="outline"
+              >
+                Resend OTP {countdown > 0 ? `(${countdown}s)` : ""}
+              </Button>
+              <Button type="button" onClick={handleVerifyOtp}>
+                Verify OTP
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
