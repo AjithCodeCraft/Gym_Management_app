@@ -1,9 +1,23 @@
-import React, { useState } from 'react';
+"use client";
+import React, { useState,useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { User, Plus, ArrowLeft, Mail } from 'lucide-react';
 import axios from 'axios';
 import AdminSidebar from '../sidebar';
 import Navbar from '../navbar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { Button } from "@/components/ui/button";
 
 const AddTrainer = () => {
   const router = useRouter();
@@ -17,10 +31,21 @@ const AddTrainer = () => {
     experience: '', // New field
     qualifications: '', // New field
     salary: '', // New field for salary
+    date_of_birth: '', // New field for date of birth
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // OTP-related states
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [countdown, setCountdown] = useState(0);
+  const [isOtpDialogOpen, setIsOtpDialogOpen] = useState(false);
+  const [otpButtonText, setOtpButtonText] = useState("Get OTP");
+  const [otpButtonColor, setOtpButtonColor] = useState("bg-[#ea580c]");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -42,6 +67,12 @@ const AddTrainer = () => {
     setError('');
     setSuccessMessage('');
 
+    if (!otpVerified) {
+      setError('Please verify your email with OTP.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await axios.post('/api/trainers', {
         ...formData,
@@ -62,6 +93,42 @@ const AddTrainer = () => {
       setLoading(false);
     }
   };
+
+  // OTP Functions (Frontend-only)
+  const handleGetOtp = () => {
+    // Simulate sending OTP
+    setOtpSent(true);
+    setIsOtpDialogOpen(true);
+    setCountdown(45); // Start the countdown
+    setOtpError('');
+  };
+
+  const handleVerifyOtp = () => {
+    // Simulate OTP verification
+    if (otp === "123456") { // Mock OTP value
+      setOtpVerified(true);
+      setIsOtpDialogOpen(false);
+      setOtpError("");
+      setOtpButtonText("Verified");
+      setOtpButtonColor("bg-blue-500");
+    } else {
+      setOtpError("Invalid OTP. Please try again.");
+    }
+  };
+
+  const handleResendOtp = () => {
+    // Simulate resending OTP
+    setCountdown(45); // Reset the countdown
+    setOtpError('');
+    setOtp('');
+  };
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -97,14 +164,24 @@ const AddTrainer = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                      required
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleGetOtp}
+                      className={`px-4 py-2 ${otpButtonColor} text-white rounded-md hover:bg-[#d94a0a] transition-colors`}
+                      disabled={otpVerified}
+                    >
+                      {otpButtonText}
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Phone</label>
@@ -201,6 +278,17 @@ const AddTrainer = () => {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                  <input
+                    type="date"
+                    name="date_of_birth"
+                    value={formData.date_of_birth}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                    required
+                  />
+                </div>
               </div>
 
               {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -214,7 +302,7 @@ const AddTrainer = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !otpVerified}
                   className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -225,6 +313,45 @@ const AddTrainer = () => {
           </div>
         </main>
       </div>
+
+      {/* OTP Dialog */}
+      <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle>Enter OTP</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-sm text-gray-600">OTP sent to: {formData.email}</p>
+            <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)}>
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+              </InputOTPGroup>
+              <InputOTPSeparator />
+              <InputOTPGroup>
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+            {otpError && <span className="text-red-600 text-sm">{otpError}</span>}
+            <div className="flex justify-between w-full">
+              <Button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={countdown > 0}
+                variant="outline"
+              >
+                Resend OTP {countdown > 0 ? `(${countdown}s)` : ""}
+              </Button>
+              <Button type="button" onClick={handleVerifyOtp}>
+                Verify OTP
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
