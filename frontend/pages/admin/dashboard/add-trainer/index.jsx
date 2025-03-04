@@ -1,10 +1,10 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { User, Plus, ArrowLeft, Mail, Send } from 'lucide-react';
-import api from '../../../api/axios';
-import AdminSidebar from '../sidebar';
-import Navbar from '../navbar';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { User, Plus, ArrowLeft, Mail, Send } from "lucide-react";
+import api from "../../../api/axios";
+import AdminSidebar from "../sidebar";
+import Navbar from "../navbar";
 import {
   Dialog,
   DialogContent,
@@ -22,26 +22,26 @@ import { Button } from "@/components/ui/button";
 const AddTrainer = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone_number: '',
-    gender: 'male',
-    specialization: '',
-    availability: 'both',
-    experience_years: '',
-    qualifications: '',
-    salary: '',
-    date_of_birth: '',
+    name: "",
+    email: "",
+    phone_number: "",
+    gender: "male",
+    specialization: "",
+    availability: "both",
+    experience_years: "",
+    qualifications: "",
+    salary: "",
+    date_of_birth: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   // OTP-related states
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
-  const [otpError, setOtpError] = useState('');
+  const [otpError, setOtpError] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [isOtpDialogOpen, setIsOtpDialogOpen] = useState(false);
   const [otpButtonText, setOtpButtonText] = useState("Get OTP");
@@ -62,31 +62,35 @@ const AddTrainer = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccessMessage('');
+    setError("");
+    setSuccessMessage("");
 
     if (!otpVerified) {
-      setError('Please verify your email with OTP.');
+      setError("Please verify your email with OTP.");
       setLoading(false);
       return;
     }
 
+    // Format the phone number to E.164 format
+    const formattedPhoneNumber = `+91${formData.phone_number}`;
+
     try {
-      const response = await api.post('register/', {
+      const response = await api.post("register/", {
         ...formData,
-        user_type: 'trainer',
+        phone_number: formattedPhoneNumber, // Use the formatted phone number
+        user_type: "trainer",
       });
 
       if (response.data.success) {
-        setSuccessMessage('Trainer added successfully! Login credentials sent to their email.');
+        setSuccessMessage("Trainer added successfully! Login credentials sent to their email.");
         setTimeout(() => {
-          router.push('/trainers');
+          router.push("/trainers");
         }, 3000);
       } else {
-        setError(response.data.message || 'Failed to add trainer.');
+        setError(response.data.message || "Failed to add trainer.");
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred.');
+      setError(err.response?.data?.message || "An error occurred.");
     } finally {
       setLoading(false);
     }
@@ -95,34 +99,38 @@ const AddTrainer = () => {
   // OTP Functions (API-based)
   const handleGetOtp = async () => {
     if (!formData.email) {
-      setOtpError('Please enter an email address first.');
+      setOtpError("Please enter an email address first.");
       return;
     }
-    
+
     setSendingOtp(true);
     setOtpButtonText("Sending...");
-    
+
     try {
-      const response = await api.post('send-otp/', { email: formData.email });
-      console.log('OTP Response:', response.data);
-      
-      if (response.data && (response.data.success || response.data.message === "OTP sent. Verify OTP to complete registration.")) {
+      const response = await api.post("send-otp/", { email: formData.email });
+      console.log("OTP Response:", response.data);
+
+      if (
+        response.data &&
+        (response.data.success ||
+          response.data.message === "OTP sent. Verify OTP to complete registration.")
+      ) {
         setOtpSent(true);
-        setOtpError('');
+        setOtpError("");
         setCountdown(45); // Start the countdown
         setOtpButtonText("Resend OTP");
-        
+
         // Force state update and then open dialog
         setTimeout(() => {
           setIsOtpDialogOpen(true);
         }, 100);
       } else {
-        setOtpError('Failed to send OTP. Please try again.');
+        setOtpError("Failed to send OTP. Please try again.");
         setOtpButtonText("Get OTP");
       }
     } catch (err) {
-      console.error('OTP Error:', err);
-      setOtpError('An error occurred while sending OTP.');
+      console.error("OTP Error:", err);
+      setOtpError("An error occurred while sending OTP.");
       setOtpButtonText("Get OTP");
     } finally {
       setSendingOtp(false);
@@ -131,18 +139,18 @@ const AddTrainer = () => {
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
-      setOtpError('Please enter a valid 6-digit OTP.');
+      setOtpError("Please enter a valid 6-digit OTP.");
       return;
     }
-    
+
     setVerifyingOtp(true);
-    
+
     try {
-      const response = await api.post('verify-otp/', { 
-        email: formData.email, 
-        otp: otp 
+      const response = await api.post("verify-otp/", {
+        email: formData.email,
+        otp: otp,
       });
-      
+
       if (response.data && response.data.message === "OTP verified successfully") {
         setOtpVerified(true);
         setIsOtpDialogOpen(false);
@@ -153,8 +161,8 @@ const AddTrainer = () => {
         setOtpError("Invalid OTP. Please try again.");
       }
     } catch (err) {
-      console.error('Verify OTP Error:', err);
-      const errorMessage = err.response?.data?.error || 'An error occurred while verifying OTP.';
+      console.error("Verify OTP Error:", err);
+      const errorMessage = err.response?.data?.error || "An error occurred while verifying OTP.";
       setOtpError(errorMessage);
     } finally {
       setVerifyingOtp(false);
@@ -165,21 +173,24 @@ const AddTrainer = () => {
     if (countdown > 0) {
       return; // Prevent spamming the resend button
     }
-    
+
     setSendingOtp(true);
-    
+
     try {
-      const response = await api.post('send-otp/', { email: formData.email });
-      if (response.data.success || response.data.message === "OTP sent. Verify OTP to complete registration.") {
+      const response = await api.post("send-otp/", { email: formData.email });
+      if (
+        response.data.success ||
+        response.data.message === "OTP sent. Verify OTP to complete registration."
+      ) {
         setCountdown(45); // Reset the countdown
-        setOtpError('');
-        setOtp('');
+        setOtpError("");
+        setOtp("");
       } else {
-        setOtpError('Failed to resend OTP. Please try again.');
+        setOtpError("Failed to resend OTP. Please try again.");
       }
     } catch (err) {
-      console.error('Resend OTP Error:', err);
-      setOtpError('An error occurred while resending OTP.');
+      console.error("Resend OTP Error:", err);
+      setOtpError("An error occurred while resending OTP.");
     } finally {
       setSendingOtp(false);
     }
@@ -247,7 +258,9 @@ const AddTrainer = () => {
                     <Button
                       type="button"
                       onClick={handleGetOtp}
-                      className={`px-4 py-2 ${otpButtonColor} text-white rounded-md hover:${otpVerified ? "bg-green-600" : "bg-[#d94a0a]"} transition-colors flex items-center`}
+                      className={`px-4 py-2 ${otpButtonColor} text-white rounded-md hover:${
+                        otpVerified ? "bg-green-600" : "bg-[#d94a0a]"
+                      } transition-colors flex items-center`}
                       disabled={otpVerified || sendingOtp}
                     >
                       {sendingOtp ? (
@@ -263,14 +276,23 @@ const AddTrainer = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <input
-                    type="text"
-                    name="phone_number"
-                    value={formData.phone_number}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                    required
-                  />
+                  <div className="flex items-center">
+                    <span className="px-3 py-2 bg-gray-200 border border-gray-300 rounded-l-md">+91</span>
+                    <input
+                      type="text"
+                      name="phone_number"
+                      value={formData.phone_number}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-r-md p-2"
+                      placeholder="Enter phone number"
+                      required
+                      maxLength={10} // Ensure only 10 digits are entered
+                      onInput={(e) => {
+                        // Allow only numbers
+                        e.target.value = e.target.value.replace(/[^0-9]/g, "");
+                      }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Gender</label>
@@ -301,33 +323,33 @@ const AddTrainer = () => {
                   <div className="mt-1 flex space-x-2">
                     <button
                       type="button"
-                      onClick={() => handleAvailabilityChange('morning')}
+                      onClick={() => handleAvailabilityChange("morning")}
                       className={`px-4 py-2 rounded-md ${
-                        formData.availability === 'morning'
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-200 text-gray-700'
+                        formData.availability === "morning"
+                          ? "bg-orange-500 text-white"
+                          : "bg-gray-200 text-gray-700"
                       }`}
                     >
                       Morning
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleAvailabilityChange('evening')}
+                      onClick={() => handleAvailabilityChange("evening")}
                       className={`px-4 py-2 rounded-md ${
-                        formData.availability === 'evening'
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-200 text-gray-700'
+                        formData.availability === "evening"
+                          ? "bg-orange-500 text-white"
+                          : "bg-gray-200 text-gray-700"
                       }`}
                     >
                       Evening
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleAvailabilityChange('both')}
+                      onClick={() => handleAvailabilityChange("both")}
                       className={`px-4 py-2 rounded-md ${
-                        formData.availability === 'both'
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-200 text-gray-700'
+                        formData.availability === "both"
+                          ? "bg-orange-500 text-white"
+                          : "bg-gray-200 text-gray-700"
                       }`}
                     >
                       Both
@@ -392,10 +414,12 @@ const AddTrainer = () => {
                 <button
                   type="submit"
                   disabled={loading || !otpVerified}
-                  className={`flex items-center px-4 py-2 ${!otpVerified ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'} text-white rounded-md`}
+                  className={`flex items-center px-4 py-2 ${
+                    !otpVerified ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600"
+                  } text-white rounded-md`}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  {loading ? 'Adding...' : 'Add Trainer'}
+                  {loading ? "Adding..." : "Add Trainer"}
                 </button>
               </div>
             </form>
@@ -411,12 +435,12 @@ const AddTrainer = () => {
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
             <p className="text-sm text-gray-600">Enter the 6-digit OTP sent to: <strong>{formData.email}</strong></p>
-            <InputOTP 
-              maxLength={6} 
-              value={otp} 
+            <InputOTP
+              maxLength={6}
+              value={otp}
               onChange={(value) => {
                 setOtp(value);
-                setOtpError('');
+                setOtpError("");
               }}
             >
               <InputOTPGroup>
@@ -446,13 +470,11 @@ const AddTrainer = () => {
                     Sending...
                   </>
                 ) : (
-                  <>
-                    Resend OTP {countdown > 0 ? `(${countdown}s)` : ""}
-                  </>
+                  <>Resend OTP {countdown > 0 ? `(${countdown}s)` : ""}</>
                 )}
               </Button>
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 onClick={handleVerifyOtp}
                 disabled={verifyingOtp || otp.length < 6}
                 className="bg-orange-500 hover:bg-orange-600"
@@ -467,7 +489,7 @@ const AddTrainer = () => {
       {/* Fallback Button to manually open dialog if automatic doesn't work */}
       {otpSent && !isOtpDialogOpen && !otpVerified && (
         <div className="fixed bottom-4 right-4 z-50">
-          <Button 
+          <Button
             onClick={handleDialogOpen}
             className="bg-orange-500 hover:bg-orange-600"
           >

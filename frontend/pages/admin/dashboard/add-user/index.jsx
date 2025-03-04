@@ -1,11 +1,10 @@
-"use client";
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { User, Plus, ArrowLeft, Mail, Loader, AlertCircle, Send } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import { User, Plus, ArrowLeft, Mail, Loader, AlertCircle, Send } from "lucide-react";
 import api from "../../../api/axios";
-import AdminSidebar from '../sidebar';
-import Navbar from '../navbar';
-import Cookies from 'js-cookie';
+import AdminSidebar from "../sidebar";
+import Navbar from "../navbar";
+import Cookies from "js-cookie";
 import {
   Dialog,
   DialogContent,
@@ -23,25 +22,26 @@ import { Button } from "@/components/ui/button";
 const AddMember = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone_number: '',
-    gender: '',
-    date_of_birth: '',
-    subscription_plan_id: '',
+    name: "",
+    email: "",
+    phone_number: "",
+    gender: "",
+    date_of_birth: "",
+    subscription_plan_id: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [plans, setPlans] = useState([]);
   const [fetchingPlans, setFetchingPlans] = useState(true);
-  const [authError, setAuthError] = useState('');
+  const [authError, setAuthError] = useState("");
+  const [showPopup, setShowPopup] = useState(false); // State for popup visibility
 
   // OTP-related states
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
-  const [otpError, setOtpError] = useState('');
+  const [otpError, setOtpError] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [isOtpDialogOpen, setIsOtpDialogOpen] = useState(false);
   const [otpButtonText, setOtpButtonText] = useState("Get OTP");
@@ -54,47 +54,53 @@ const AddMember = () => {
     const fetchPlans = async () => {
       try {
         setFetchingPlans(true);
-        setAuthError('');
+        setAuthError("");
 
         // Get access token from cookies
-        const accessToken = Cookies.get('access_token');
+        const accessToken = Cookies.get("access_token");
 
         if (!accessToken) {
-          setAuthError('Access denied. No authentication token found.');
+          setAuthError("Access denied. No authentication token found.");
           setFetchingPlans(false);
           return;
         }
 
         // Set up request with authorization header
-        const response = await api.get('subscriptions/', {
+        const response = await api.get("subscriptions/", {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
 
         if (response.data) {
           // Check if the response is an array or if it has a specific property containing plans
-          const plansData = Array.isArray(response.data) ? response.data :
-                           response.data.plans ? response.data.plans : [];
+          const plansData = Array.isArray(response.data)
+            ? response.data
+            : response.data.plans
+            ? response.data.plans
+            : [];
 
           setPlans(plansData);
 
           // Set default plan to first plan if available
           if (plansData.length > 0) {
-            setFormData(prev => ({ ...prev, subscription_plan_id: plansData[0].id }));
+            setFormData((prev) => ({
+              ...prev,
+              subscription_plan_id: plansData[0].id,
+            }));
           }
         } else {
-          setError('Failed to load subscription plans.');
+          setError("Failed to load subscription plans.");
         }
       } catch (err) {
         if (err.response && err.response.status === 401) {
-          setAuthError('Access denied. Your session may have expired. Please log in again.');
+          setAuthError("Access denied. Your session may have expired. Please log in again.");
         } else if (err.response && err.response.status === 403) {
-          setAuthError('You do not have permission to access subscription data.');
+          setAuthError("You do not have permission to access subscription data.");
         } else {
-          setError('Error fetching subscription plans. Please try again.');
+          setError("Error fetching subscription plans. Please try again.");
         }
-        console.error('Failed to fetch plans:', err);
+        console.error("Failed to fetch plans:", err);
       } finally {
         setFetchingPlans(false);
       }
@@ -111,64 +117,70 @@ const AddMember = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccessMessage('');
+    setError("");
+    setSuccessMessage("");
 
     if (!otpVerified) {
-      setError('Please verify your email with OTP.');
+      setError("Please verify your email with OTP.");
       setLoading(false);
       return;
     }
 
     // Check if the selected plan ID exists
-    const selectedPlan = plans.find(plan => plan.id === formData.subscription_plan_id);
+    const selectedPlan = plans.find((plan) => plan.id === formData.subscription_plan_id);
     if (!selectedPlan) {
-      setError('Selected subscription plan not found.');
+      setError("Selected subscription plan not found.");
       setLoading(false);
       return;
     }
 
     // Ensure gender is set
     if (!formData.gender) {
-      setError('Please select a gender.');
+      setError("Please select a gender.");
       setLoading(false);
       return;
     }
 
+    // Format the phone number to E.164 format
+    const formattedPhoneNumber = `+91${formData.phone_number}`;
+
     try {
-      const response = await api.post('register/', {
+      const response = await api.post("register/", {
         ...formData,
-        user_type: 'user',
+        phone_number: formattedPhoneNumber, // Use the formatted phone number
+        user_type: "user",
       });
 
       if (response.data.success) {
-        setSuccessMessage('Member added successfully! Login credentials sent to their email.');
-        setTimeout(() => {
-          router.push('dashboard');
-        }, 3000);
+        setSuccessMessage("Member added successfully! Login credentials sent to their email.");
+        setShowPopup(true); // Show the popup
       } else {
-        setError(response.data.message || 'Failed to add member.');
+        setError(response.data.message || "Failed to add member.");
       }
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
-        setError('An error occurred while registering the member.');
+        setError("An error occurred while registering the member.");
       }
-      console.error('Registration error:', err);
+      console.error("Registration error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogin = () => {
-    router.push('/login');
+    router.push("/login");
+  };
+
+  const handleRedirect = () => {
+    router.push("http://localhost:3000/admin/dashboard");
   };
 
   // OTP Functions (API-based)
   const handleGetOtp = async () => {
     if (!formData.email) {
-      setOtpError('Please enter an email address first.');
+      setOtpError("Please enter an email address first.");
       return;
     }
 
@@ -176,12 +188,16 @@ const AddMember = () => {
     setOtpButtonText("Sending...");
 
     try {
-      const response = await api.post('send-otp/', { email: formData.email });
-      console.log('OTP Response:', response.data);
+      const response = await api.post("send-otp/", { email: formData.email });
+      console.log("OTP Response:", response.data);
 
-      if (response.data && (response.data.success || response.data.message === "OTP sent. Verify OTP to complete registration.")) {
+      if (
+        response.data &&
+        (response.data.success ||
+          response.data.message === "OTP sent. Verify OTP to complete registration.")
+      ) {
         setOtpSent(true);
-        setOtpError('');
+        setOtpError("");
         setCountdown(45); // Start the countdown
         setOtpButtonText("Resend OTP");
 
@@ -190,12 +206,12 @@ const AddMember = () => {
           setIsOtpDialogOpen(true);
         }, 100);
       } else {
-        setOtpError('Failed to send OTP. Please try again.');
+        setOtpError("Failed to send OTP. Please try again.");
         setOtpButtonText("Get OTP");
       }
     } catch (err) {
-      console.error('OTP Error:', err);
-      setOtpError('An error occurred while sending OTP.');
+      console.error("OTP Error:", err);
+      setOtpError("An error occurred while sending OTP.");
       setOtpButtonText("Get OTP");
     } finally {
       setSendingOtp(false);
@@ -204,16 +220,16 @@ const AddMember = () => {
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
-      setOtpError('Please enter a valid 6-digit OTP.');
+      setOtpError("Please enter a valid 6-digit OTP.");
       return;
     }
 
     setVerifyingOtp(true);
 
     try {
-      const response = await api.post('verify-otp/', {
+      const response = await api.post("verify-otp/", {
         email: formData.email,
-        otp: otp
+        otp: otp,
       });
 
       if (response.data && response.data.message === "OTP verified successfully") {
@@ -226,8 +242,8 @@ const AddMember = () => {
         setOtpError("Invalid OTP. Please try again.");
       }
     } catch (err) {
-      console.error('Verify OTP Error:', err);
-      const errorMessage = err.response?.data?.error || 'An error occurred while verifying OTP.';
+      console.error("Verify OTP Error:", err);
+      const errorMessage = err.response?.data?.error || "An error occurred while verifying OTP.";
       setOtpError(errorMessage);
     } finally {
       setVerifyingOtp(false);
@@ -242,17 +258,20 @@ const AddMember = () => {
     setSendingOtp(true);
 
     try {
-      const response = await api.post('send-otp/', { email: formData.email });
-      if (response.data.success || response.data.message === "OTP sent. Verify OTP to complete registration.") {
+      const response = await api.post("send-otp/", { email: formData.email });
+      if (
+        response.data.success ||
+        response.data.message === "OTP sent. Verify OTP to complete registration."
+      ) {
         setCountdown(45); // Reset the countdown
-        setOtpError('');
-        setOtp('');
+        setOtpError("");
+        setOtp("");
       } else {
-        setOtpError('Failed to resend OTP. Please try again.');
+        setOtpError("Failed to resend OTP. Please try again.");
       }
     } catch (err) {
-      console.error('Resend OTP Error:', err);
-      setOtpError('An error occurred while resending OTP.');
+      console.error("Resend OTP Error:", err);
+      setOtpError("An error occurred while resending OTP.");
     } finally {
       setSendingOtp(false);
     }
@@ -277,10 +296,10 @@ const AddMember = () => {
 
   // Format the price to Indian Rupees
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
     }).format(price);
   };
 
@@ -355,7 +374,9 @@ const AddMember = () => {
                       <Button
                         type="button"
                         onClick={handleGetOtp}
-                        className={`px-4 py-2 ${otpButtonColor} text-white rounded-md hover:${otpVerified ? "bg-green-600" : "bg-[#d94a0a]"} transition-colors flex items-center`}
+                        className={`px-4 py-2 ${otpButtonColor} text-white rounded-md hover:${
+                          otpVerified ? "bg-green-600" : "bg-[#d94a0a]"
+                        } transition-colors flex items-center`}
                         disabled={otpVerified || sendingOtp}
                       >
                         {sendingOtp ? (
@@ -371,14 +392,23 @@ const AddMember = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input
-                      type="text"
-                      name="phone_number"
-                      value={formData.phone_number}
-                      onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      required
-                    />
+                    <div className="flex items-center">
+                      <span className="px-3 py-3 bg-gray-200 border border-gray-300 rounded-l-lg">+91</span>
+                      <input
+                        type="text"
+                        name="phone_number"
+                        value={formData.phone_number}
+                        onChange={handleChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-r-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        placeholder="Enter phone number"
+                        required
+                        maxLength={10} // Ensure only 10 digits are entered
+                        onInput={(e) => {
+                          // Allow only numbers
+                          e.target.value = e.target.value.replace(/[^0-9]/g, "");
+                        }}
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
@@ -417,8 +447,8 @@ const AddMember = () => {
                       {plans.map((plan) => (
                         <option key={plan.id} value={plan.id}>
                           {plan.name} - {formatPrice(plan.price)}
-                          {plan.duration ? ` (${plan.duration} months)` : ''}
-                          {plan.personal_training ? ' with PT' : ''}
+                          {plan.duration ? ` (${plan.duration} months)` : ""}
+                          {plan.personal_training ? " with PT" : ""}
                         </option>
                       ))}
                     </select>
@@ -449,7 +479,7 @@ const AddMember = () => {
                     ) : (
                       <Plus className="h-4 w-4 mr-2" />
                     )}
-                    {loading ? 'Adding...' : 'Add Member'}
+                    {loading ? "Adding..." : "Add Member"}
                   </button>
                 </div>
               </form>
@@ -465,13 +495,15 @@ const AddMember = () => {
             <DialogTitle>Verify Email with OTP</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
-            <p className="text-sm text-gray-600">Enter the 6-digit OTP sent to: <strong>{formData.email}</strong></p>
+            <p className="text-sm text-gray-600">
+              Enter the 6-digit OTP sent to: <strong>{formData.email}</strong>
+            </p>
             <InputOTP
               maxLength={6}
               value={otp}
               onChange={(value) => {
                 setOtp(value);
-                setOtpError('');
+                setOtpError("");
               }}
             >
               <InputOTPGroup>
@@ -501,9 +533,7 @@ const AddMember = () => {
                     Sending...
                   </>
                 ) : (
-                  <>
-                    Resend OTP {countdown > 0 ? `(${countdown}s)` : ""}
-                  </>
+                  <>Resend OTP {countdown > 0 ? `(${countdown}s)` : ""}</>
                 )}
               </Button>
               <Button
@@ -528,6 +558,21 @@ const AddMember = () => {
           >
             Enter OTP
           </Button>
+        </div>
+      )}
+
+      {/* Popup Card */}
+      {showPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-8 rounded-lg shadow-lg text-center">
+            <h2 className="text-xl font-bold mb-4">User Created Successfully!</h2>
+            <button
+              onClick={handleRedirect}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              OK
+            </button>
+          </div>
         </div>
       )}
     </div>

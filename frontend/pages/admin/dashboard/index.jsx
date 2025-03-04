@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from "react";
+import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign } from "lucide-react";
 import Link from "next/link";
-import Navbar from './navbar';
-import AdminSidebar from './sidebar';
+import Navbar from "./navbar";
+import AdminSidebar from "./sidebar";
 import api from "../../api/axios";
-import Cookies from 'js-cookie';
+import Cookies from "js-cookie";
+import debounce from "lodash.debounce";
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -13,59 +14,88 @@ const Dashboard = () => {
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch users and trainers only once on mount
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const accessToken = Cookies.get('access_token');
+        const accessToken = Cookies.get("access_token");
 
         if (!accessToken) {
-          console.error('Access token not found');
+          console.error("Access token not found");
           return;
         }
 
-        const usersResponse = await api.get('users/', {
+        const usersResponse = await api.get("users/", {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
         setUsers(usersResponse.data);
 
-        const trainersResponse = await api.get('trainers/', {
+        const trainersResponse = await api.get("trainers/", {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
         setTrainers(trainersResponse.data);
       } catch (error) {
-        console.error('Error fetching users or trainers:', error);
+        console.error("Error fetching users or trainers:", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchUsers();
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once
+
+  // Debounced search handler
+  const handleSearch = debounce((query) => {
+    setSearchQuery(query);
+  }, 300);
+
+  // Memoize filtered users to avoid unnecessary re-renders
+  const filteredUsers = useMemo(() => {
+    return activeTab === "members"
+      ? users.filter(
+          (user) =>
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : trainers.filter(
+          (user) =>
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+  }, [users, trainers, searchQuery, activeTab]);
 
   const parseDate = (dateString) => {
     return new Date(dateString);
   };
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
-
-  const filteredUsers = activeTab === "members"
-    ? users.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase()))
-    : trainers.filter(user => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const stats = {
     totalMembers: users.length,
     totalTrainers: trainers.length,
-    activeMembers: users.filter(u => u.is_active).length,
+    activeMembers: users.filter((u) => u.is_active).length,
     totalRevenue: users.reduce((total, member) => {
-      const activeSubscriptions = member.subscriptions.filter(sub => sub.status === 'active');
-      return total + activeSubscriptions.reduce((subTotal, sub) => subTotal + parseFloat(sub.subscription.price), 0);
-    }, 0)
+      const activeSubscriptions = member.subscriptions.filter(
+        (sub) => sub.status === "active"
+      );
+      return (
+        total +
+        activeSubscriptions.reduce(
+          (subTotal, sub) => subTotal + parseFloat(sub.subscription.price),
+          0
+        )
+      );
+    }, 0),
   };
 
   if (loading) {
@@ -77,7 +107,7 @@ const Dashboard = () => {
       <AdminSidebar />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        <Navbar searchQuery={searchQuery} setSearchQuery={handleSearch} />
 
         <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
@@ -193,7 +223,7 @@ const Dashboard = () => {
                           className="pl-9 pr-4 py-1 border border-gray-300 rounded-md text-sm w-full md:w-64"
                           placeholder="Search by name, email..."
                           value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onChange={(e) => handleSearch(e.target.value)}
                         />
                       </div>
                     </div>
@@ -249,15 +279,15 @@ const Dashboard = () => {
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800">
-                                  {user.subscriptions.map(sub => sub.subscription.name).join(', ')}
+                                  {user.subscriptions.map((sub) => sub.subscription.name).join(", ")}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {user.subscriptions.map(sub => formatDate(parseDate(sub.end_date))).join(', ')}
+                                {user.subscriptions.map((sub) => formatDate(parseDate(sub.end_date))).join(", ")}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                  {user.is_active ? 'Active' : 'Inactive'}
+                                  {user.is_active ? "Active" : "Inactive"}
                                 </span>
                               </td>
                             </>
@@ -265,12 +295,12 @@ const Dashboard = () => {
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
-                                  {user.trainer_profile ? user.trainer_profile.specialization : 'N/A'}
+                                  {user.trainer_profile ? user.trainer_profile.specialization : "N/A"}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                  {user.is_active ? 'Active' : 'Inactive'}
+                                  {user.is_active ? "Active" : "Inactive"}
                                 </span>
                               </td>
                             </>
