@@ -10,63 +10,59 @@ import debounce from "lodash.debounce";
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("members");
-  const [users, setUsers] = useState([]);
+  const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fetch users and trainers only once on mount
+  // Fetch both members and trainers data when the component mounts
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
         const accessToken = Cookies.get("access_token");
 
         if (!accessToken) {
-          console.error("Access token not found");
-          return;
+          throw new Error("Access token not found");
         }
 
-        const usersResponse = await api.get("users/", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-        setUsers(usersResponse.data);
+        const [membersResponse, trainersResponse] = await Promise.all([
+          api.get("list_users_and_trainers/?type=user", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+          api.get("list_users_and_trainers/?type=trainer", {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+        ]);
 
-        const trainersResponse = await api.get("trainers/", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+        setMembers(membersResponse.data);
         setTrainers(trainersResponse.data);
+        setLoading(false);
       } catch (error) {
-        console.error("Error fetching users or trainers:", error);
-      } finally {
+        console.error("Error fetching data:", error);
+        setError(error.message);
         setLoading(false);
       }
     };
 
-    fetchUsers();
-  }, []); // Empty dependency array ensures this runs only once
+    fetchData();
+  }, []);
 
   // Debounced search handler
   const handleSearch = debounce((query) => {
     setSearchQuery(query);
   }, 300);
 
+  // Determine which dataset to use based on the active tab
+  const users = activeTab === "members" ? members : trainers;
+
   // Memoize filtered users to avoid unnecessary re-renders
   const filteredUsers = useMemo(() => {
-    return activeTab === "members"
-      ? users.filter(
-          (user) =>
-            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : trainers.filter(
-          (user) =>
-            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-  }, [users, trainers, searchQuery, activeTab]);
+    return users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [users, searchQuery]);
 
   const parseDate = (dateString) => {
     return new Date(dateString);
@@ -81,25 +77,32 @@ const Dashboard = () => {
   };
 
   const stats = {
-    totalMembers: users.length,
-    totalTrainers: trainers.length,
-    activeMembers: users.filter((u) => u.is_active).length,
-    totalRevenue: users.reduce((total, member) => {
-      const activeSubscriptions = member.subscriptions.filter(
-        (sub) => sub.status === "active"
-      );
-      return (
-        total +
-        activeSubscriptions.reduce(
-          (subTotal, sub) => subTotal + parseFloat(sub.subscription.price),
-          0
-        )
-      );
+    totalMembers: activeTab === 'members' ? members.length : 0,
+    totalTrainers: activeTab === 'trainers' ? trainers.length : 0,
+    activeMembers: members.filter((u) => u.is_active).length,
+    totalRevenue: members.reduce((total, member) => {
+      if (member.subscriptions && Array.isArray(member.subscriptions)) {
+        const activeSubscriptions = member.subscriptions.filter(
+          (sub) => sub.status === "active"
+        );
+        return (
+          total +
+          activeSubscriptions.reduce(
+            (subTotal, sub) => subTotal + parseFloat(sub.subscription.price),
+            0
+          )
+        );
+      }
+      return total;
     }, 0),
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-orange-500"></div>
+      </div>
+    );
   }
 
   return (
@@ -138,8 +141,12 @@ const Dashboard = () => {
                         <User className="h-6 w-6" />
                       </div>
                       <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-500">Total Members</p>
-                        <h3 className="text-2xl font-bold text-gray-900">{stats.totalMembers}</h3>
+                        <p className="text-sm font-medium text-gray-500">
+                          {activeTab === 'members' ? 'Total Members' : 'Total Trainers'}
+                        </p>
+                        <h3 className="text-2xl font-bold text-gray-900">
+                          {activeTab === 'members' ? stats.totalMembers : stats.totalTrainers}
+                        </h3>
                       </div>
                     </div>
                   </div>
@@ -193,21 +200,19 @@ const Dashboard = () => {
                   <div className="flex flex-col md:flex-row p-4">
                     <button
                       onClick={() => setActiveTab("members")}
-                      className={`mr-4 py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${
-                        activeTab === "members"
+                      className={`mr-4 py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${activeTab === "members"
                           ? "bg-orange-500 text-white"
                           : "text-gray-500 hover:text-gray-700"
-                      }`}
+                        }`}
                     >
                       Members
                     </button>
                     <button
                       onClick={() => setActiveTab("trainers")}
-                      className={`py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${
-                        activeTab === "trainers"
+                      className={`py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${activeTab === "trainers"
                           ? "bg-orange-500 text-white"
                           : "text-gray-500 hover:text-gray-700"
-                      }`}
+                        }`}
                     >
                       Trainers
                     </button>
@@ -279,11 +284,15 @@ const Dashboard = () => {
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800">
-                                  {user.subscriptions.map((sub) => sub.subscription.name).join(", ")}
+                                  {user.subscriptions && Array.isArray(user.subscriptions)
+                                    ? user.subscriptions.map((sub) => sub.subscription.name).join(", ")
+                                    : "N/A"}
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {user.subscriptions.map((sub) => formatDate(parseDate(sub.end_date))).join(", ")}
+                                {user.subscriptions && Array.isArray(user.subscriptions)
+                                  ? user.subscriptions.map((sub) => formatDate(parseDate(sub.end_date))).join(", ")
+                                  : "N/A"}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
@@ -305,7 +314,6 @@ const Dashboard = () => {
                               </td>
                             </>
                           )}
-
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {formatDate(parseDate(user.created_at))}
                           </td>
@@ -325,7 +333,7 @@ const Dashboard = () => {
                 <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
                   <div className="text-sm text-gray-500">
                     Showing <span className="font-medium">{filteredUsers.length}</span> of{" "}
-                    <span className="font-medium">{activeTab === "members" ? users.length : trainers.length}</span> {activeTab}
+                    <span className="font-medium">{users.length}</span> {activeTab}
                   </div>
                   <div className="flex space-x-2">
                     <button className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-500">

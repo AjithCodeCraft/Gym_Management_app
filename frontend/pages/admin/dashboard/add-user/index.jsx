@@ -340,7 +340,7 @@ const AddMember = () => {
             ) : fetchingPlans ? (
               <div className="flex justify-center items-center py-10">
                 <Loader className="h-8 w-8 animate-spin text-blue-500" />
-                <p className="ml-3 text-gray-600">Loading Member...</p>
+                <p className="ml-3 text-gray-600">Loading Subscription Plans...</p>
               </div>
             ) : plans.length === 0 ? (
               <div className="bg-yellow-50 p-4 rounded-lg text-yellow-700 mb-6">
