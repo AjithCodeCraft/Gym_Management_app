@@ -95,7 +95,7 @@ const SubscriptionPlans = () => {
       await api.delete(`subscriptions/delete/${selectedPlan.id}/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       setPlans(plans.filter(plan => plan.id !== selectedPlan.id));
       setIsDeleteModalOpen(false);
       setSelectedPlan(null);
@@ -139,15 +139,14 @@ const SubscriptionPlans = () => {
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
         );
 
+        // Update the state with the new plan
         setPlans([...plans, response.data]);
         setSuccessMessage('Plan added successfully!');
       }
-      
+
       // Close modal and reset form after success
       setTimeout(() => {
         closeModal();
-        // Refresh the plans list
-        fetchPlans();
       }, 1000);
     } catch (err) {
       console.error('Error saving plan:', err);
@@ -229,13 +228,13 @@ const SubscriptionPlans = () => {
                         ₹{plan.price}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button 
-                          onClick={() => handleEdit(plan)} 
+                        <button
+                          onClick={() => handleEdit(plan)}
                           className="text-orange-500 hover:text-orange-700 mr-4"
                         >
                           <Edit className="h-5 w-5" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(plan)}
                           className="text-red-500 hover:text-red-700"
                         >

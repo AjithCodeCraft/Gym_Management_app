@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign, Edit, XCircle } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign, Edit, XCircle, Check, X, RefreshCw, Trash2, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import Navbar from "./navbar";
 import AdminSidebar from "./sidebar";
@@ -14,6 +14,14 @@ const Dashboard = () => {
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editedValues, setEditedValues] = useState({});
+  const [availablePlans, setAvailablePlans] = useState([]);
+  const [showPlansModal, setShowPlansModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedPlanId, setSelectedPlanId] = useState(null); // Track selected plan ID
+  const [isUpdating, setIsUpdating] = useState(false); // Track update state
+  const [updateSuccess, setUpdateSuccess] = useState(false); // Track update success
 
   // Fetch both members and trainers data when the component mounts
   useEffect(() => {
@@ -81,20 +89,230 @@ const Dashboard = () => {
     totalTrainers: activeTab === 'trainers' ? trainers.length : 0,
     activeMembers: members.filter((u) => u.is_active).length,
     totalRevenue: members.reduce((total, member) => {
-      if (member.subscriptions && Array.isArray(member.subscriptions)) {
-        const activeSubscriptions = member.subscriptions.filter(
-          (sub) => sub.status === "active"
-        );
-        return (
-          total +
-          activeSubscriptions.reduce(
-            (subTotal, sub) => subTotal + parseFloat(sub.subscription.price),
-            0
-          )
-        );
-      }
-      return total;
+      const subscriptions = Array.isArray(member.subscriptions) ? member.subscriptions : [];
+      const activeSubscriptions = subscriptions.filter(
+        (sub) => sub.status === "active"
+      );
+      return (
+        total +
+        activeSubscriptions.reduce(
+          (subTotal, sub) => subTotal + parseFloat(sub.price || 0),
+          0
+        )
+      );
     }, 0),
+  };
+
+  const handleEdit = (user) => {
+    setEditingUser(user.id);
+    setEditedValues({
+      email: user.email,
+      phone_number: user.phone_number,
+      is_active: user.is_active,
+    });
+  };
+
+  const handleSave = async (user) => {
+    try {
+      const accessToken = Cookies.get("access_token");
+      await api.put(
+        "update_user_details/",
+        {
+          email: user.email,
+          phone_number: editedValues.phone_number,
+          is_active: editedValues.is_active,
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      setMembers((prevMembers) =>
+        prevMembers.map((member) =>
+          member.id === user.id ? { ...member, ...editedValues } : member
+        )
+      );
+      setTrainers((prevTrainers) =>
+        prevTrainers.map((trainer) =>
+          trainer.id === user.id ? { ...trainer, ...editedValues } : trainer
+        )
+      );
+      setEditingUser(null);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      setError(error.message);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingUser(null);
+  };
+
+  const handleCancelUpgrade = async (user) => {
+    try {
+      const accessToken = Cookies.get("access_token");
+      await api.put(
+        "update_user_details/",
+        {
+          email: user.email,
+          action: 'cancel',
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      setMembers((prevMembers) =>
+        prevMembers.map((member) =>
+          member.id === user.id
+            ? {
+                ...member,
+                subscriptions: (Array.isArray(member.subscriptions) ? member.subscriptions : []).map((sub) => ({
+                  ...sub,
+                  status: 'cancelled',
+                })),
+              }
+            : member
+        )
+      );
+      setTrainers((prevTrainers) =>
+        prevTrainers.map((trainer) =>
+          trainer.id === user.id
+            ? {
+                ...trainer,
+                subscriptions: (Array.isArray(trainer.subscriptions) ? trainer.subscriptions : []).map((sub) => ({
+                  ...sub,
+                  status: 'cancelled',
+                })),
+              }
+            : trainer
+        )
+      );
+    } catch (error) {
+      console.error("Error cancelling upgrade:", error);
+      setError(error.message);
+    }
+  };
+
+  const handleReactivate = async (user) => {
+    try {
+      const accessToken = Cookies.get("access_token");
+      await api.put(
+        "update_user_details/",
+        {
+          email: user.email,
+          action: 'upgrade',
+          new_plan_id: user.subscriptions?.[0]?.id, // Safely access the first subscription's ID
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      setMembers((prevMembers) =>
+        prevMembers.map((member) =>
+          member.id === user.id
+            ? {
+                ...member,
+                subscriptions: (Array.isArray(member.subscriptions) ? member.subscriptions : []).map((sub) => ({
+                  ...sub,
+                  status: 'active',
+                })),
+              }
+            : member
+        )
+      );
+      setTrainers((prevTrainers) =>
+        prevTrainers.map((trainer) =>
+          trainer.id === user.id
+            ? {
+                ...trainer,
+                subscriptions: (Array.isArray(trainer.subscriptions) ? trainer.subscriptions : []).map((sub) => ({
+                  ...sub,
+                  status: 'active',
+                })),
+              }
+            : trainer
+        )
+      );
+    } catch (error) {
+      console.error("Error reactivating plan:", error);
+      setError(error.message);
+    }
+  };
+
+  const handleUpgradePlan = async (user) => {
+    try {
+      const accessToken = Cookies.get("access_token");
+      const response = await api.get("subscriptions/", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setAvailablePlans(response.data);
+      setSelectedUser(user);
+      setShowPlansModal(true);
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+      setError(error.message);
+    }
+  };
+
+  const handlePlanSelection = async () => {
+    if (!selectedPlanId) {
+      alert("Please select a plan first.");
+      return;
+    }
+
+    setIsUpdating(true); // Start updating animation
+    setUpdateSuccess(false); // Reset success state
+
+    try {
+      const accessToken = Cookies.get("access_token");
+      await api.put(
+        "update_user_details/",
+        {
+          email: selectedUser.email,
+          action: 'upgrade',
+          new_plan_id: selectedPlanId,
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      // Update the user's subscriptions in the UI
+      setMembers((prevMembers) =>
+        prevMembers.map((member) =>
+          member.id === selectedUser.id
+            ? {
+                ...member,
+                subscriptions: (Array.isArray(member.subscriptions) ? member.subscriptions : []).map((sub) =>
+                  sub.id === selectedPlanId ? { ...sub, status: 'active' } : sub
+                ),
+              }
+            : member
+        )
+      );
+
+      setTrainers((prevTrainers) =>
+        prevTrainers.map((trainer) =>
+          trainer.id === selectedUser.id
+            ? {
+                ...trainer,
+                subscriptions: (Array.isArray(trainer.subscriptions) ? trainer.subscriptions : []).map((sub) =>
+                  sub.id === selectedPlanId ? { ...sub, status: 'active' } : sub
+                ),
+              }
+            : trainer
+        )
+      );
+
+      setUpdateSuccess(true); // Show success message
+      setTimeout(() => {
+        setShowPlansModal(false); // Close modal after success
+        setIsUpdating(false); // Stop updating animation
+      }, 1000); // Wait for 1 second before closing
+    } catch (error) {
+      console.error("Error upgrading plan:", error);
+      setError(error.message);
+      setIsUpdating(false); // Stop updating animation
+    }
   };
 
   if (loading) {
@@ -201,8 +419,8 @@ const Dashboard = () => {
                     <button
                       onClick={() => setActiveTab("members")}
                       className={`mr-4 py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${activeTab === "members"
-                          ? "bg-orange-500 text-white"
-                          : "text-gray-500 hover:text-gray-700"
+                        ? "bg-orange-500 text-white"
+                        : "text-gray-500 hover:text-gray-700"
                         }`}
                     >
                       Members
@@ -210,8 +428,8 @@ const Dashboard = () => {
                     <button
                       onClick={() => setActiveTab("trainers")}
                       className={`py-2 px-4 font-medium text-sm rounded-md mb-2 md:mb-0 ${activeTab === "trainers"
-                          ? "bg-orange-500 text-white"
-                          : "text-gray-500 hover:text-gray-700"
+                        ? "bg-orange-500 text-white"
+                        : "text-gray-500 hover:text-gray-700"
                         }`}
                     >
                       Trainers
@@ -271,33 +489,66 @@ const Dashboard = () => {
                               </div>
                               <div className="ml-3">
                                 <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                                <div className="text-xs text-gray-500">{user.gender.charAt(0).toUpperCase() + user.gender.slice(1)}</div>
+
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{user.email}</div>
-                            <div className="text-xs text-gray-500">{user.phone_number}</div>
+                            {editingUser === user.id ? (
+                              <>
+                                <input
+                                  type="email"
+                                  className="text-sm text-gray-900 border border-gray-300 rounded-md px-2 py-1"
+                                  value={editedValues.email}
+                                  onChange={(e) => setEditedValues({ ...editedValues, email: e.target.value })}
+                                />
+                                <input
+                                  type="text"
+                                  className="text-xs text-gray-500 border border-gray-300 rounded-md px-2 py-1 mt-1"
+                                  value={editedValues.phone_number}
+                                  onChange={(e) => setEditedValues({ ...editedValues, phone_number: e.target.value })}
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-sm text-gray-900">{user.email}</div>
+                                <div className="text-xs text-gray-500">{user.phone_number}</div>
+                              </>
+                            )}
                           </td>
 
                           {activeTab === "members" ? (
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800">
-                                  {user.subscriptions && Array.isArray(user.subscriptions)
-                                    ? user.subscriptions.map((sub) => sub.subscription.name).join(", ")
+                                  {user.subscriptions && typeof user.subscriptions === "object"
+                                    ? user.subscriptions.name
                                     : "N/A"}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {user.subscriptions && Array.isArray(user.subscriptions)
-                                  ? user.subscriptions.map((sub) => formatDate(parseDate(sub.end_date))).join(", ")
-                                  : "N/A"}
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800">
+                                  {user.subscriptions && typeof user.subscriptions === "object"
+                                    ? user.subscriptions.end_date
+                                    : "N/A"}
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                  {user.is_active ? "Active" : "Inactive"}
-                                </span>
+                                {editingUser === user.id ? (
+                                  <select
+                                    className="text-xs rounded-full bg-green-100 text-green-800 px-2 py-1"
+                                    value={editedValues.is_active}
+                                    onChange={(e) => setEditedValues({ ...editedValues, is_active: e.target.value === "true" })}
+                                  >
+                                    <option value="true">Active</option>
+                                    <option value="false">Inactive</option>
+                                  </select>
+                                ) : (
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                    {user.is_active ? "Active" : "Inactive"}
+                                  </span>
+                                )}
                               </td>
                             </>
                           ) : (
@@ -308,9 +559,20 @@ const Dashboard = () => {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                  {user.is_active ? "Active" : "Inactive"}
-                                </span>
+                                {editingUser === user.id ? (
+                                  <select
+                                    className="text-xs rounded-full bg-green-100 text-green-800 px-2 py-1"
+                                    value={editedValues.is_active}
+                                    onChange={(e) => setEditedValues({ ...editedValues, is_active: e.target.value === "true" })}
+                                  >
+                                    <option value="true">Active</option>
+                                    <option value="false">Inactive</option>
+                                  </select>
+                                ) : (
+                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                    {user.is_active ? "Active" : "Inactive"}
+                                  </span>
+                                )}
                               </td>
                             </>
                           )}
@@ -319,17 +581,66 @@ const Dashboard = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex space-x-2">
-                              <Link href={`/admin/dashboard/edit-${activeTab}/${user.id}`}>
-                                <button className="text-blue-500 hover:text-blue-700">
-                                  <Edit className="h-5 w-5" />
-                                </button>
-                              </Link>
-                              <button
-                                onClick={() => handleDisable(user.id)}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <XCircle className="h-5 w-5" />
-                              </button>
+                              {editingUser === user.id ? (
+                                <>
+                                  <button
+                                    onClick={() => handleSave(user)}
+                                    className="text-green-500 hover:text-green-700"
+                                    title="Save"
+                                  >
+                                    <Check className="h-5 w-5" />
+                                  </button>
+                                  <button
+                                    onClick={handleCancel}
+                                    className="text-red-500 hover:text-red-700"
+                                    title="Cancel"
+                                  >
+                                    <X className="h-5 w-5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleEdit(user)}
+                                    className="text-blue-500 hover:text-blue-700"
+                                    title="Edit"
+                                  >
+                                    <Edit className="h-5 w-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDisable(user.id)}
+                                    className="text-red-500 hover:text-red-700"
+                                    title="Disable"
+                                  >
+                                    <XCircle className="h-5 w-5" />
+                                  </button>
+                                  {activeTab === "members" && (
+                                    <>
+                                      <button
+                                        onClick={() => handleCancelUpgrade(user)}
+                                        className="text-yellow-500 hover:text-yellow-700"
+                                        title="Cancel Upgrade"
+                                      >
+                                        <Trash2 className="h-5 w-5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleReactivate(user)}
+                                        className="text-green-500 hover:text-green-700"
+                                        title="Reactivate"
+                                      >
+                                        <RefreshCw className="h-5 w-5" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleUpgradePlan(user)}
+                                        className="text-green-500 hover:text-green-700"
+                                        title="Upgrade Plan"
+                                      >
+                                        <ArrowUp className="h-5 w-5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -357,6 +668,56 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
+
+      {showPlansModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h2 className="text-xl font-bold mb-4">Select a Plan</h2>
+            <ul className="space-y-2">
+              {availablePlans.map((plan) => (
+                <li key={plan.id} className="flex justify-between items-center">
+                  <span>{plan.name}</span>
+                  <button
+                    onClick={() => setSelectedPlanId(plan.id)}
+                    className={`px-4 py-2 text-white rounded-md ${
+                      selectedPlanId === plan.id ? "bg-green-600" : "bg-green-500 hover:bg-green-600"
+                    }`}
+                  >
+                    Select
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex justify-between">
+              <button
+                onClick={() => setShowPlansModal(false)}
+                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePlanSelection}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
+                disabled={isUpdating}
+              >
+                {isUpdating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  "Update"
+                )}
+              </button>
+            </div>
+            {updateSuccess && (
+              <div className="mt-4 text-green-600 text-center">
+                Updated successfully!
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
