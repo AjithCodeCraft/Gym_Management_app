@@ -34,7 +34,7 @@ class LightweightUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'name', 'email', 'user_type', 
+            'id','user_id' ,'name', 'email', 'user_type', 
             'gender', 'phone_number', 
             'is_active', 'created_at', 
             'subscriptions', 'trainer_profile'

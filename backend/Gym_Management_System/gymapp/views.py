@@ -1,5 +1,6 @@
 import random
 from uuid import UUID
+import uuid
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from django.shortcuts import render
@@ -508,7 +509,7 @@ def list_users_and_trainers(request):
         serializer = LightweightUserSerializer(users, many=True)
 
         # Cache the serialized data for 1 hour
-        cache.set(cache_key, serializer.data, timeout=3600)  # 1 hour in seconds
+        cache.set(cache_key, serializer.data, timeout=60*15)  # 1 hour in seconds
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -532,7 +533,7 @@ def invalidate_users_cache(user_type, user_id):
 
 
 @api_view(['PUT'])
-def update_subscription(request):
+def update_user_subscription(request):
     if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
         return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
     
@@ -541,46 +542,72 @@ def update_subscription(request):
     new_plan_id = request.data.get('new_plan_id')  # Required for upgrade
     is_active = request.data.get('is_active')  # Enable or disable user
     phone_number = request.data.get('phone_number')  # Update phone number
-    
+
     try:
         user = User.objects.get(email=email)
         subscription = UserSubscription.objects.filter(user=user, status='active').first()
-        
+
+        # Update user details if needed
         if is_active is not None:
             user.is_active = is_active
         if phone_number:
             user.phone_number = phone_number
         user.save()
-        
-        if not subscription:
-            return Response({'error': 'No active subscription found'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         if action == 'cancel':
+            if not subscription:
+                return Response({'error': 'No active subscription found'}, status=status.HTTP_404_NOT_FOUND)
+            
             subscription.status = 'cancelled'
             subscription.end_date = timezone.now().date()
             subscription.save()
             return Response({'message': 'Subscription cancelled successfully'}, status=status.HTTP_200_OK)
-        
+
         elif action == 'upgrade':
             try:
                 new_plan = Subscription.objects.get(id=new_plan_id)
             except Subscription.DoesNotExist:
                 return Response({'error': 'New subscription plan not found'}, status=status.HTTP_404_NOT_FOUND)
-            
-            subscription.subscription = new_plan
-            subscription.start_date = timezone.now().date()
-            subscription.end_date = subscription.start_date + relativedelta(months=new_plan.duration)
-            subscription.save()
-            
-            return Response({'message': 'Subscription upgraded successfully'}, status=status.HTTP_200_OK)
-        
+
+            # Check if user has a cancelled subscription
+            cancelled_subscription = UserSubscription.objects.filter(user=user, status='cancelled').first()
+            if cancelled_subscription:
+                # Reactivate the cancelled subscription instead of creating a new one
+                cancelled_subscription.subscription = new_plan
+                cancelled_subscription.status = 'active'
+                cancelled_subscription.start_date = timezone.now().date()
+                cancelled_subscription.end_date = cancelled_subscription.start_date + relativedelta(months=new_plan.duration)
+                cancelled_subscription.save()
+                return Response({'message': 'Cancelled subscription reactivated with new plan'}, status=status.HTTP_200_OK)
+
+            # If no cancelled subscription, upgrade the active one
+            if subscription:
+                subscription.subscription = new_plan
+                subscription.start_date = timezone.now().date()
+                subscription.end_date = subscription.start_date + relativedelta(months=new_plan.duration)
+                subscription.save()
+                return Response({'message': 'Subscription upgraded successfully'}, status=status.HTTP_200_OK)
+
+            # If no active or cancelled subscription, create a new one
+            new_subscription = UserSubscription.objects.create(
+                user=user,
+                subscription=new_plan,
+                start_date=timezone.now().date(),
+                end_date=timezone.now().date() + relativedelta(months=new_plan.duration),
+                status='active'
+            )
+            return Response({'message': 'New subscription added successfully'}, status=status.HTTP_201_CREATED)
+
         else:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
 
 @api_view(['PUT'])
 def update_trainer_details(request):

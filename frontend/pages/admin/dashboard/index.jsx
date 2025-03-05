@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign, Edit, XCircle } from "lucide-react";
 import Link from "next/link";
 import Navbar from "./navbar";
 import AdminSidebar from "./sidebar";
@@ -318,9 +318,17 @@ const Dashboard = () => {
                             {formatDate(parseDate(user.created_at))}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="relative inline-block text-left">
-                              <button className="text-gray-400 hover:text-gray-600">
-                                <MoreHorizontal className="h-5 w-5" />
+                            <div className="flex space-x-2">
+                              <Link href={`/admin/dashboard/edit-${activeTab}/${user.id}`}>
+                                <button className="text-blue-500 hover:text-blue-700">
+                                  <Edit className="h-5 w-5" />
+                                </button>
+                              </Link>
+                              <button
+                                onClick={() => handleDisable(user.id)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <XCircle className="h-5 w-5" />
                               </button>
                             </div>
                           </td>
@@ -354,3 +362,8 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
+// Dummy function for handleDisable
+const handleDisable = (id) => {
+  console.log("Disable user with ID:", id);
+};
