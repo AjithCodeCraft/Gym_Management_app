@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Animated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -12,6 +13,12 @@ const AppBar = () => {
   const [profileMenuVisible, setProfileMenuVisible] = useState(false);
   const slideAnim = useState(new Animated.Value(-200))[0];
   const fadeAnim = useState(new Animated.Value(0))[0];
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+
+  const handleLogOut = async () => {
+    await AsyncStorage.removeItem("access_token");
+    setIsLoggedIn(false);
+  }
 
   const toggleMenu = () => {
     if (menuVisible) {
@@ -187,6 +194,11 @@ const AppBar = () => {
     },
   });
 
+  if (!isLoggedIn) {
+    return <Redirect href="/login" />;
+  }
+
+
   return (
     <View style={styles.container}>
       {/* AppBar */}
@@ -312,7 +324,7 @@ const AppBar = () => {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              onPress={() => alert('Logged out!')}
+              onPress={handleLogOut}
               style={styles.profileMenuItem}
             >
               <Ionicons name="log-out" size={20} color="#f97316" />
