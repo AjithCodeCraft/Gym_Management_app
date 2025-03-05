@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import add_subscription, delete_all, delete_subscription, list_subscriptions, list_trainers, list_users, list_users_and_trainers, login_user, register_user, send_otp, send_password_reset_email, update_subscription, verify_otp
+from .views import add_subscription, delete_all, delete_subscription, list_subscriptions, list_trainers, list_users, list_users_and_trainers, login_user, register_user, send_otp, send_password_reset_email, update_subscription, update_trainer_details, update_user_subscription, verify_otp
 
 
 
@@ -18,6 +18,8 @@ urlpatterns = [
     path('trainers/',list_trainers, name = 'list_trainers'),
     path('delete',delete_all,name = 'delete'),
     path('list_users_and_trainers/', list_users_and_trainers, name='list_users_and_trainers'),
+    path('update-subscription/', update_user_subscription, name='update_subscription'),
+    path('update-trainer-details/', update_trainer_details, name='update_trainer_details'),
 
 
 ]
