@@ -2,6 +2,11 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Image, Alert, Modal, StyleSheet } from "react-native";
 import { Redirect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons"; // For icons
+import axios from "axios";
+import Constants from "expo-constants";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const API_URL =  Constants?.expoConfig?.extra?.API_URL;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -10,12 +15,28 @@ export default function LoginPage() {
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
-  const handleLogin = () => {
-    // Dummy login logic
-    if (email === "ajithsa909@gmail.com" && password === "1122") {
-      setIsLoggedIn(true); // Set login state to true
-    } else {
-      Alert.alert("Invalid Credentials", "Please check your email and password.");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password!");
+      return;
+    }
+    const credentials = {
+      email: email,
+      password: password
+    };
+    try {
+        const response = await axios.post(`${API_URL}/api/login/`, credentials, {
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+        await AsyncStorage.setItem("access_token", response.data.access);
+        setIsLoggedIn(true);
+    } catch (error) {
+        Alert.alert(
+            "Invalid Credentials",
+            `Please check your email and password!`
+        );
     }
   };
 
@@ -91,13 +112,6 @@ export default function LoginPage() {
             <Text style={styles.loginButtonText}>Login</Text>
           </TouchableOpacity>
 
-          {/* Sign Up Link */}
-          {/* <View style={styles.signUpContainer}>
-            <Text style={styles.signUpText}>Don't have an account? </Text>
-            <TouchableOpacity>
-              <Text style={styles.signUpLink}>Sign up</Text>
-            </TouchableOpacity>
-          </View> */}
         </View>
       </View>
 

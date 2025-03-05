@@ -9,7 +9,7 @@ urlpatterns = [
     path('verify-otp/', verify_otp, name='verify-otp'),  
     path('register/', register_user, name='register-user'), 
     path('password-reset/', send_password_reset_email, name='send_password_reset_email'),
-    path('login/',login_user,name = 'user_login'),
+    path('login/',login_user, name='user_login'),
     path('subscriptions/', list_subscriptions, name='list_subscriptions'),
     path('subscriptions/add/', add_subscription, name='add_subscription'),
     path('subscriptions/edit/<uuid:subscription_id>/', update_subscription, name='update_subscription'),
@@ -18,7 +18,5 @@ urlpatterns = [
     path('trainers/',list_trainers, name = 'list_trainers'),
     path('delete',delete_all,name = 'delete'),
     path('list_users_and_trainers/', list_users_and_trainers, name='list_users_and_trainers'),
-
-
 ]
  
