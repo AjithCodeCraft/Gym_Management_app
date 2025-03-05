@@ -45,9 +45,12 @@ class LightweightUserSerializer(serializers.ModelSerializer):
         active_subs = obj.subscriptions.filter(status='active').first()
         if active_subs:
             return {
+                'id': active_subs.subscription.id,
                 'name': active_subs.subscription.name,
                 'price': str(active_subs.subscription.price),
-                'end_date': active_subs.end_date
+                'start_date':active_subs.start_date,
+                'end_date': active_subs.end_date,
+                'status':active_subs.status
             }
         return None
 

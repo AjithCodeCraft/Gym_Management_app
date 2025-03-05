@@ -533,12 +533,12 @@ def invalidate_users_cache(user_type, user_id):
 
 
 @api_view(['PUT'])
-def update_user_subscription(request):
+def update_user_details(request):
     if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
         return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
-    
+
     email = request.data.get('email')
-    action = request.data.get('action')  # 'cancel' or 'upgrade'
+    action = request.data.get('action')  # 'cancel', 'upgrade', or None for only updating phone number
     new_plan_id = request.data.get('new_plan_id')  # Required for upgrade
     is_active = request.data.get('is_active')  # Enable or disable user
     phone_number = request.data.get('phone_number')  # Update phone number
@@ -547,12 +547,16 @@ def update_user_subscription(request):
         user = User.objects.get(email=email)
         subscription = UserSubscription.objects.filter(user=user, status='active').first()
 
-        # Update user details if needed
+        # Update user details if needed (phone number and activation status)
         if is_active is not None:
             user.is_active = is_active
         if phone_number:
             user.phone_number = phone_number
         user.save()
+
+        # If no subscription action is provided, return success after updating phone number
+        if not action:
+            return Response({'message': 'User details updated successfully'}, status=status.HTTP_200_OK)
 
         if action == 'cancel':
             if not subscription:
@@ -605,7 +609,6 @@ def update_user_subscription(request):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 
