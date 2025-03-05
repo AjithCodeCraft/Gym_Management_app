@@ -10,12 +10,15 @@ from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
 from rest_framework.response import Response
 from rest_framework import status
+from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 import jwt
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import SubscriptionSerializer, UserSerializer
+from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer
+from django.views.decorators.cache import cache_page
+
 # Create your views here.
 
 
@@ -353,12 +356,24 @@ def login_user(request):
 
 
 @api_view(['GET'])
+@cache_page(60 * 15)  # Cache the view for 15 minutes
 def list_subscriptions(request):
     if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
         return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
 
-    subscriptions = Subscription.objects.all()
+    # Check if the data is in the cache
+    cache_key = 'subscriptions_list'
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return Response(cached_data, status=status.HTTP_200_OK)
+
+    # Fetch data from the database
+    subscriptions = Subscription.objects.all()  # Remove select_related if not needed
     serializer = SubscriptionSerializer(subscriptions, many=True)
+
+    # Cache the data
+    cache.set(cache_key, serializer.data, timeout=60*15)  # Cache timeout set to 15 minutes
+
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -454,3 +469,160 @@ def list_trainers(request):
 def delete_all(request):
     User.objects.all().delete()
     return Response({"message": "All users deleted."}, status=status.HTTP_200_OK)
+
+
+
+
+@api_view(['GET'])
+def list_users_and_trainers(request):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+
+    user_type = request.query_params.get("type")
+    if user_type not in ["user", "trainer"]:
+        return Response(
+            {"detail": "Invalid type parameter. Use 'user' or 'trainer'."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Create a unique cache key
+    cache_key = f"users_list_{user_type}_{request.user.id}"
+
+    # Try to get cached data
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return Response(cached_data, status=status.HTTP_200_OK)
+
+    try:
+        # Optimized queryset with select_related and prefetch_related
+        users = User.objects.select_related(
+            'trainer_profile'
+        ).prefetch_related(
+            'subscriptions__subscription'
+        ).filter(
+            user_type=user_type,
+            is_active=True  # Only active users
+        ).order_by('-created_at')  # Most recent first
+
+        # Serialize the data
+        serializer = LightweightUserSerializer(users, many=True)
+
+        # Cache the serialized data for 1 hour
+        cache.set(cache_key, serializer.data, timeout=3600)  # 1 hour in seconds
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        # Log the error (replace with your logging mechanism)
+        print(f"Error fetching users: {e}")
+        return Response(
+            {"detail": "An error occurred while fetching users."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+# Additional utility function for cache invalidation
+def invalidate_users_cache(user_type, user_id):
+    """
+    Invalidate cache for a specific user type and user
+    """
+    cache_key = f"users_list_{user_type}_{user_id}"
+    cache.delete(cache_key)
+
+
+
+
+@api_view(['PUT'])
+def update_subscription(request):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+    
+    email = request.data.get('email')
+    action = request.data.get('action')  # 'cancel' or 'upgrade'
+    new_plan_id = request.data.get('new_plan_id')  # Required for upgrade
+    is_active = request.data.get('is_active')  # Enable or disable user
+    phone_number = request.data.get('phone_number')  # Update phone number
+    
+    try:
+        user = User.objects.get(email=email)
+        subscription = UserSubscription.objects.filter(user=user, status='active').first()
+        
+        if is_active is not None:
+            user.is_active = is_active
+        if phone_number:
+            user.phone_number = phone_number
+        user.save()
+        
+        if not subscription:
+            return Response({'error': 'No active subscription found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if action == 'cancel':
+            subscription.status = 'cancelled'
+            subscription.end_date = timezone.now().date()
+            subscription.save()
+            return Response({'message': 'Subscription cancelled successfully'}, status=status.HTTP_200_OK)
+        
+        elif action == 'upgrade':
+            try:
+                new_plan = Subscription.objects.get(id=new_plan_id)
+            except Subscription.DoesNotExist:
+                return Response({'error': 'New subscription plan not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            subscription.subscription = new_plan
+            subscription.start_date = timezone.now().date()
+            subscription.end_date = subscription.start_date + relativedelta(months=new_plan.duration)
+            subscription.save()
+            
+            return Response({'message': 'Subscription upgraded successfully'}, status=status.HTTP_200_OK)
+        
+        else:
+            return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['PUT'])
+def update_trainer_details(request):
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
+    
+    email = request.data.get('email')
+    specialization = request.data.get('specialization')
+    experience_years = request.data.get('experience_years')
+    qualifications = request.data.get('qualifications')
+    availability = request.data.get('availability')
+    salary = request.data.get('salary')
+    is_active = request.data.get('is_active')  # Enable or disable trainer
+    phone_number = request.data.get('phone_number')  # Update phone number
+    
+    try:
+        user = User.objects.get(email=email, user_type='trainer')
+        trainer_profile = TrainerProfile.objects.get(user=user)
+        
+        if is_active is not None:
+            user.is_active = is_active
+        if phone_number:
+            user.phone_number = phone_number
+        user.save()
+        
+        if specialization:
+            trainer_profile.specialization = specialization
+        if experience_years:
+            trainer_profile.experience_years = experience_years
+        if qualifications:
+            trainer_profile.qualifications = qualifications
+        if availability:
+            trainer_profile.availability = availability
+        if salary:
+            trainer_profile.salary = salary
+        
+        trainer_profile.save()
+        
+        return Response({'message': 'Trainer details updated successfully'}, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({'error': 'Trainer not found'}, status=status.HTTP_404_NOT_FOUND)
+    except TrainerProfile.DoesNotExist:
+        return Response({'error': 'Trainer profile not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
