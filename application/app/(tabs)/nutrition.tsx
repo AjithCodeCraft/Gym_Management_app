@@ -3,7 +3,7 @@ import { Text, View, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import MealSection from '../../components/neutrition/MealSection';
 import MetricsModal from '../../components/neutrition/MetricsModal';
 import FoodSearchModal from '../../components/neutrition/FoodSearchModal';
-
+import { FoodItem,dummyFoods } from '@/components/neutrition/foodItems';
 export default function Nutrition() {
   const [userMetrics, setUserMetrics] = useState({
     height: '',
@@ -22,14 +22,14 @@ export default function Nutrition() {
 
   const [setupComplete, setSetupComplete] = useState(false);
 
-  type FoodItem = {
-    id: string;
-    name: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fats: number;
-  };
+  // type FoodItem = {
+  //   id: string;
+  //   name: string;
+  //   calories: number;
+  //   protein: number;
+  //   carbs: number;
+  //   fats: number;
+  // };
 
   const [meals, setMeals] = useState<{
     breakfast: FoodItem[];
@@ -52,18 +52,18 @@ export default function Nutrition() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FoodItem[]>([]);
-  const dummyFoods = [
-    { id: '1', name: 'Oatmeal', calories: 150, protein: 6, carbs: 27, fats: 2.5 },
-    { id: '2', name: 'Scrambled Eggs', calories: 140, protein: 12, carbs: 1, fats: 10 },
-    { id: '3', name: 'Whole Wheat Toast', calories: 80, protein: 3, carbs: 15, fats: 1 },
-    { id: '4', name: 'Banana', calories: 105, protein: 1.3, carbs: 27, fats: 0.4 },
-    { id: '5', name: 'Greek Yogurt', calories: 100, protein: 17, carbs: 6, fats: 0.5 },
-    { id: '6', name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fats: 3.6 },
-    { id: '7', name: 'Brown Rice', calories: 215, protein: 5, carbs: 45, fats: 1.8 },
-    { id: '8', name: 'Salmon', calories: 206, protein: 22, carbs: 0, fats: 13 },
-    { id: '9', name: 'Avocado', calories: 240, protein: 3, carbs: 12, fats: 22 },
-    { id: '10', name: 'Apple', calories: 95, protein: 0.5, carbs: 25, fats: 0.3 },
-  ];
+  // const dummyFoods = [
+  //   { id: '1', name: 'Oatmeal', calories: 150, protein: 6, carbs: 27, fats: 2.5 },
+  //   { id: '2', name: 'Scrambled Eggs', calories: 140, protein: 12, carbs: 1, fats: 10 },
+  //   { id: '3', name: 'Whole Wheat Toast', calories: 80, protein: 3, carbs: 15, fats: 1 },
+  //   { id: '4', name: 'Banana', calories: 105, protein: 1.3, carbs: 27, fats: 0.4 },
+  //   { id: '5', name: 'Greek Yogurt', calories: 100, protein: 17, carbs: 6, fats: 0.5 },
+  //   { id: '6', name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fats: 3.6 },
+  //   { id: '7', name: 'Brown Rice', calories: 215, protein: 5, carbs: 45, fats: 1.8 },
+  //   { id: '8', name: 'Salmon', calories: 206, protein: 22, carbs: 0, fats: 13 },
+  //   { id: '9', name: 'Avocado', calories: 240, protein: 3, carbs: 12, fats: 22 },
+  //   { id: '10', name: 'Apple', calories: 95, protein: 0.5, carbs: 25, fats: 0.3 },
+  // ];
 
   const [dailyTotals, setDailyTotals] = useState({
     calories: 0,

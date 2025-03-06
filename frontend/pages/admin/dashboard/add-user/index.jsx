@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { User, Plus, ArrowLeft, Mail, Loader, AlertCircle, Send } from "lucide-react";
+import { User, Plus, ArrowLeft, Mail, Loader, AlertCircle, Send, CheckCircle } from "lucide-react";
 import api from "../../../api/axios";
 import AdminSidebar from "../sidebar";
 import Navbar from "../navbar";
@@ -35,7 +35,7 @@ const AddMember = () => {
   const [plans, setPlans] = useState([]);
   const [fetchingPlans, setFetchingPlans] = useState(true);
   const [authError, setAuthError] = useState("");
-  const [showPopup, setShowPopup] = useState(false); // State for popup visibility
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false); // State for success dialog visibility
 
   // OTP-related states
   const [otp, setOtp] = useState("");
@@ -49,7 +49,7 @@ const AddMember = () => {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
-
+  const [createdUserName, setCreatedUserName] = useState(""); // To store the name of the created user
 
   // Fetch subscription plans from API with authentication
   useEffect(() => {
@@ -156,7 +156,8 @@ const AddMember = () => {
   
       if (response.data.success) {
         setSuccessMessage("Member added successfully! Login credentials sent to their email.");
-        setShowPopup(true); // Show the popup
+        setCreatedUserName(formData.name); // Store the name for the success dialog
+        setShowSuccessDialog(true); // Show the success dialog
       } else {
         setError(response.data.message || "Failed to add member.");
       }
@@ -181,7 +182,6 @@ const AddMember = () => {
     }
   };
   
-
   const handleLogin = () => {
     router.push("/login");
   };
@@ -241,7 +241,6 @@ const AddMember = () => {
     }
   };
   
-
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
       setOtpError("Please enter a valid 6-digit OTP.");
@@ -395,8 +394,6 @@ const AddMember = () => {
                         className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         required
                       />
-                        {fieldErrors.email && <p className="text-red-500">{fieldErrors.email}</p>}
-
                       <Button
                         type="button"
                         onClick={handleGetOtp}
@@ -414,8 +411,10 @@ const AddMember = () => {
                           otpButtonText
                         )}
                       </Button>
-
                     </div>
+                    {fieldErrors.email && (
+                      <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
@@ -435,8 +434,10 @@ const AddMember = () => {
                           e.target.value = e.target.value.replace(/[^0-9]/g, "");
                         }}
                       />
-                      {fieldErrors.phone_number && <p className="text-red-500">{fieldErrors.phone_number}</p>}
                     </div>
+                    {fieldErrors.phone_number && (
+                      <p className="text-red-500 text-sm mt-1">{fieldErrors.phone_number}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
@@ -589,20 +590,29 @@ const AddMember = () => {
         </div>
       )}
 
-      {/* Popup Card */}
-      {showPopup && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-8 rounded-lg shadow-lg text-center">
-            <h2 className="text-xl font-bold mb-4">User Created Successfully!</h2>
-            <button
+      {/* Improved Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="h-10 w-10 text-green-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Success!</h2>
+            <p className="text-lg text-gray-700 mb-1">
+              <span className="font-medium text-green-600">{createdUserName}</span> has been registered successfully
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Login credentials have been sent to their email
+            </p>
+            <Button
               onClick={handleRedirect}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-lg transition-all duration-300"
             >
-              OK
-            </button>
+              Go to Dashboard
+            </Button>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
