@@ -31,7 +31,6 @@ export default function LoginPage() {
         throw new Error(data.error || "Invalid email or password");
       }
 
-
       if (data.user_type === "admin") {
         Cookies.set("user_id", data.user_id, { expires: 7, secure: true });
         Cookies.set("access_token", data.access, { expires: 7, secure: true });
@@ -54,12 +53,17 @@ export default function LoginPage() {
   return (
     <div className="h-screen overflow-hidden grid lg:grid-cols-2">
       <div className="flex flex-col gap-4 p-6 md:p-10">
-        <div className="flex justify-center gap-2 md:justify-start">
+        <div className="flex justify-center gap-2 md:justify-start px-6 md:px-0">
           <a href="#" className="flex items-center gap-2 font-medium">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-orange-500 text-white">
-              <GalleryVerticalEnd className="size-4" />
-            </div>
-            Two Pointes Inc.
+           
+            <Image
+              src="/g308.png"
+              alt="Logo"
+              width={70}
+              height={50}
+              className="object-contain"
+            />
+            <h1 className="text-2xl font-bold">FortiFit Gym</h1>
           </a>
         </div>
         <div className="flex flex-1 items-center justify-center">
@@ -74,13 +78,13 @@ export default function LoginPage() {
               <div className="grid gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="m@example.com" 
-                    value={email} 
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required 
+                    required
                   />
                 </div>
                 <div className="grid gap-2">
@@ -90,31 +94,30 @@ export default function LoginPage() {
                       Forgot your password?
                     </a>
                   </div>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value={password} 
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required 
+                    required
                   />
                 </div>
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                   disabled={loading}
                 >
                   {loading ? "Logging in..." : "Login"}
                 </Button>
               </div>
-              
             </form>
           </div>
         </div>
       </div>
       <div className="relative hidden lg:block">
         <Image
-          src="/loginimage.jpg"
+          src="/loginimage.png"
           alt="Login Cover"
           width={1920}
           height={1080}
