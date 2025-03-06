@@ -163,7 +163,7 @@ const AddMember = () => {
       } else {
         setError("Phone number Already exist ");
       }
-      //console.error("Registration error:", err);
+      console.log("Registration error:", err);
     } finally {
       setLoading(false);
     }
