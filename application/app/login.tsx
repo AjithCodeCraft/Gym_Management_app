@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  console.log('url',API_URL);
+  // console.log('url',API_URL);
 
   const handleLogin = async () => {
     if (!email || !password) {
