@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  ScrollView, 
-  KeyboardAvoidingView, 
-  Platform 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 
 interface AIWorkoutChatbotProps {
@@ -25,29 +25,77 @@ export default function AIWorkoutChatbot({ onClose, onAddWorkout }: AIWorkoutCha
   const dummyWorkoutPlan = {
     week: {
       Monday: {
-        day: "Monday",
-        parts: "Upper Body",
+        day: "Day 1: Back & Biceps",
+        parts: ["Back", "Biceps"],
         workout: [
-          {"exercise": "Barbell Bench Press", "sets": 4, "reps": 8, "rest": 90},
-          {"exercise": "Cable Flyes", "sets": 3, "reps": 12, "rest": 90}
+          { exercise: "Dumbbell Rows", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Dumbbell Deadlifts", sets: 4, reps: 10, rest: 90 },
+          { exercise: "Single-Arm Dumbbell Pullover", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Concentration Curls", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Hammer Curls", sets: 3, reps: 10, rest: 90 },
+          { exercise: "Reverse Flys", sets: 3, reps: 12, rest: 90 }
         ]
       },
       Tuesday: {
-        day: "Tuesday",
-        parts: "Lower Body",
+        day: "Day 2: Chest & Triceps",
+        parts: ["Chest", "Triceps"],
         workout: [
-          {"exercise": "Barbell Squat", "sets": 4, "reps": 8, "rest": 90},
-          {"exercise": "Lunges", "sets": 3, "reps": 12, "rest": 90},
-          {"exercise": "Leg Press", "sets": 3, "reps": 12, "rest": 90}
+          { exercise: "Dumbbell Bench Press", sets: 4, reps: 12, rest: 90 },
+          { exercise: "Incline Dumbbell Press", sets: 3, reps: 10, rest: 90 },
+          { exercise: "Dumbbell Flys", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Overhead Tricep Extension", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Dumbbell Kickbacks", sets: 3, reps: 12, rest: 90 }
         ]
       },
-      // ... rest of the workout plan (as you provided)
+      Wednesday: {
+        day: "Day 3: Shoulders & Abs",
+        parts: ["Shoulders", "Abs"],
+        workout: [
+          { exercise: "Seated Dumbbell Shoulder Press", sets: 4, reps: 10, rest: 90 },
+          { exercise: "Lateral Raises", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Front Raises", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Dumbbell Shrugs", sets: 3, reps: 15, rest: 90 },
+          { exercise: "Russian Twists", sets: 3, reps: 20, rest: 90 },
+          { exercise: "Dumbbell Sit-Ups", sets: 3, reps: 15, rest: 90 }
+        ]
+      },
+      Thursday: {
+        day: "Day 4: Legs & Glutes",
+        parts: ["Legs", "Glutes"],
+        workout: [
+          { exercise: "Dumbbell Squats", sets: 4, reps: 12, rest: 90 },
+          { exercise: "Dumbbell Lunges", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Romanian Deadlifts", sets: 3, reps: 10, rest: 90 },
+          { exercise: "Goblet Squat", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Calf Raises", sets: 4, reps: 15, rest: 90 }
+        ]
+      },
+      Friday: {
+        day: "Day 5: Full Body & Conditioning",
+        parts: ["Full Body"],
+        workout: [
+          { exercise: "Dumbbell Snatches", sets: 3, reps: 10, rest: 90 },
+          { exercise: "Dumbbell Clean & Press", sets: 4, reps: 10, rest: 90 },
+          { exercise: "Dumbbell Burpees", sets: 3, reps: 10, rest: 90 },
+          { exercise: "Dumbbell Thrusters", sets: 3, reps: 12, rest: 90 },
+          { exercise: "Mountain Climbers", sets: 3, reps: 30, rest: 90 }
+        ]
+      },
+      Saturday: {
+        day: "Day 6: Cardio & Core",
+        parts: ["Cardio", "Core"],
+        workout: [
+          { exercise: "Dumbbell Russian Twists", sets: 3, reps: 20, rest: 90 },
+          { exercise: "Weighted Sit-Ups", sets: 3, reps: 15, rest: 90 },
+          { exercise: "Standing Dumbbell Side Bends", sets: 3, reps: 15, rest: 90 },
+          { exercise: "Jump Rope", sets: 10, reps: 60, rest: 90 },
+          { exercise: "Burpees", sets: 3, reps: 15, rest: 90 }
+        ]
+      }
     }
   };
 
   const handleGeneratePlan = () => {
-    // In a real app, you'd make an API call here
-    // For now, we're using a dummy workout plan
     if (weight && height && age && target) {
       onAddWorkout(dummyWorkoutPlan);
     } else {
@@ -56,7 +104,7 @@ export default function AIWorkoutChatbot({ onClose, onAddWorkout }: AIWorkoutCha
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.modalContainer}
     >
@@ -104,7 +152,7 @@ export default function AIWorkoutChatbot({ onClose, onAddWorkout }: AIWorkoutCha
               onChangeText={setMessage}
             />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.generateButton}
               onPress={handleGeneratePlan}
             >
