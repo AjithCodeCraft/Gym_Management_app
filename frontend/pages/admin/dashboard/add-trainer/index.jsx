@@ -90,8 +90,7 @@ const AddTrainer = () => {
         setError(response.data.message || "Failed to add trainer.");
       }
     } catch (err) {
-      console.log("Add Trainer Error:", err);
-      setError(err.response?.data?.message || "phone number Already exist .");
+      setError(err.response?.data?.message || "An error occurred.");
     } finally {
       setLoading(false);
     }
@@ -130,7 +129,7 @@ const AddTrainer = () => {
         setOtpButtonText("Get OTP");
       }
     } catch (err) {
-      console.log("OTP Error:", err);
+      console.error("OTP Error:", err);
       setOtpError("An error occurred while sending OTP.");
       setOtpButtonText("Get OTP");
     } finally {
@@ -503,4 +502,3 @@ const AddTrainer = () => {
 };
 
 export default AddTrainer;
-

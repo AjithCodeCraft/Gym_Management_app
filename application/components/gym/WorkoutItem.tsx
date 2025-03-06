@@ -6,17 +6,13 @@ interface WorkoutItemProps {
   sets: number;
   reps: number;
   rest: number;
-  completed: boolean;
-  day: string;
-  parts: string[];
 }
 
-export default function WorkoutItem({ exercise, sets, reps, rest, completed, day, parts }: WorkoutItemProps) {
+export default function WorkoutItem({ exercise, sets, reps, rest }: WorkoutItemProps) {
   return (
-    <View style={[styles.container, completed && styles.completed]}>
+    <View style={styles.container}>
       <View style={styles.exerciseHeader}>
         <Text style={styles.exerciseName}>{exercise}</Text>
-        <Text style={styles.partsText}>{parts.join(', ')}</Text>
       </View>
       <View style={styles.detailsContainer}>
         <View style={styles.detailItem}>
@@ -32,7 +28,6 @@ export default function WorkoutItem({ exercise, sets, reps, rest, completed, day
           <Text style={styles.detailValue}>{rest} sec</Text>
         </View>
       </View>
-      <Text style={styles.dayText}>{day}</Text>
     </View>
   );
 }
@@ -50,11 +45,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3
   },
-  completed: {
-    backgroundColor: '#d4edda',
-    borderColor: '#c3e6cb',
-    borderWidth: 1
-  },
   exerciseHeader: {
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
@@ -65,11 +55,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333'
-  },
-  partsText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5
   },
   detailsContainer: {
     flexDirection: 'row',
@@ -86,11 +71,5 @@ const styles = StyleSheet.create({
   detailValue: {
     fontSize: 15,
     fontWeight: '600'
-  },
-  dayText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 10,
-    textAlign: 'center'
   }
 });
