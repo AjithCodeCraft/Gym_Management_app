@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dumbbell, BarChart, User, Users, Calendar, Settings, LogOut, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import Image from 'next/image'; // Import the Image component from Next.js
 
 const AdminSidebar = () => {
   const router = useRouter();
@@ -22,9 +23,16 @@ const AdminSidebar = () => {
       </button>
       <div className={`fixed md:static inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-30 md:z-0 w-64 bg-white shadow-md md:h-auto`}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center flex-shrink-0 px-4 py-5 md:py-4">
-            <Dumbbell className="h-8 w-8 text-orange-500" />
-            <h1 className="ml-2 text-xl font-bold">FitPro Gym</h1>
+          {/* Logo Section */}
+          <div className="flex items-center flex-shrink-0 px-6 py-5 md:py-4">
+            <Image
+              src="/g308.png" // Path to your logo in the public folder
+              alt="FitPro Gym Logo"
+              width={60} // Adjust the width as needed
+              height={40} // Adjust the height as needed
+              className="object-contain" // Ensures the image scales correctly
+            />
+             <h1 className="ml-2 text-xl font-bold">FortiFit Gym</h1>
           </div>
 
           <div className="flex-grow flex flex-col px-2 mt-2 md:mt-4">
