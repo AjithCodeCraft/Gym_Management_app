@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign, Edit, XCircle, Check, X, RefreshCw, Trash2, ArrowUp } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Filter, User, Users, Activity, DollarSign, Edit, XCircle, Check, X, Trash2, ArrowUp } from "lucide-react";
 import Link from "next/link";
 import Navbar from "./navbar";
 import AdminSidebar from "./sidebar";
@@ -22,6 +22,9 @@ const Dashboard = () => {
   const [selectedPlanId, setSelectedPlanId] = useState(null); // Track selected plan ID
   const [isUpdating, setIsUpdating] = useState(false); // Track update state
   const [updateSuccess, setUpdateSuccess] = useState(false); // Track update success
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [userToCancel, setUserToCancel] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Fetch both members and trainers data when the component mounts
   useEffect(() => {
@@ -85,17 +88,14 @@ const Dashboard = () => {
   };
 
   const stats = {
-    totalMembers: activeTab === 'members' ? members.length : 0,
-    totalTrainers: activeTab === 'trainers' ? trainers.length : 0,
+    totalMembers: members.length,
+    totalTrainers: trainers.length,
     activeMembers: members.filter((u) => u.is_active).length,
-    totalRevenue: members.reduce((total, member) => {
-      const subscriptions = Array.isArray(member.subscriptions) ? member.subscriptions : [];
-      const activeSubscriptions = subscriptions.filter(
-        (sub) => sub.status === "active"
-      );
+    totalRevenue: users.reduce((total, user) => {
+      const subscriptions = Array.isArray(user.subscriptions) ? user.subscriptions : [];
       return (
         total +
-        activeSubscriptions.reduce(
+        subscriptions.reduce(
           (subTotal, sub) => subTotal + parseFloat(sub.price || 0),
           0
         )
@@ -103,140 +103,165 @@ const Dashboard = () => {
     }, 0),
   };
 
+  const openCancelModal = (user) => {
+    setUserToCancel(user);
+    setShowCancelModal(true);
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setUserToCancel(null);
+  };
+
   const handleEdit = (user) => {
     setEditingUser(user.id);
-    setEditedValues({
-      email: user.email,
-      phone_number: user.phone_number,
-      is_active: user.is_active,
-    });
+    if (activeTab === "trainers") {
+      setEditedValues({
+        phone_number: user.phone_number || "",
+        specialization: user.trainer_profile?.specialization || "",
+        experience: user.trainer_profile?.experience || "",
+        is_active: user.is_active
+      });
+    } else {
+      setEditedValues({
+        phone_number: user.phone_number || "",
+        is_active: user.is_active
+      });
+    }
   };
 
   const handleSave = async (user) => {
     try {
       const accessToken = Cookies.get("access_token");
-      await api.put(
-        "update_user_details/",
-        {
-          email: user.email,
+      let updatedUserData = { ...user }; // Clone user data for immediate update
+
+      if (activeTab === "trainers") {
+        await api.put(
+          "update-trainer-details/",
+          {
+            email: user.email,
+            phone_number: editedValues.phone_number,
+            specialization: editedValues.specialization,
+            experience: editedValues.experience,
+            is_active: editedValues.is_active,
+          },
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+
+        updatedUserData = {
+          ...user,
           phone_number: editedValues.phone_number,
           is_active: editedValues.is_active,
-        },
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-      setMembers((prevMembers) =>
-        prevMembers.map((member) =>
-          member.id === user.id ? { ...member, ...editedValues } : member
-        )
-      );
-      setTrainers((prevTrainers) =>
-        prevTrainers.map((trainer) =>
-          trainer.id === user.id ? { ...trainer, ...editedValues } : trainer
-        )
-      );
+          trainer_profile: {
+            ...user.trainer_profile,
+            specialization: editedValues.specialization,
+            experience: editedValues.experience
+          }
+        };
+
+        setTrainers((prevTrainers) =>
+          prevTrainers.map((trainer) =>
+            trainer.id === user.id ? updatedUserData : trainer
+          )
+        );
+      } else {
+        await api.put(
+          "update_user_details/",
+          {
+            email: user.email,
+            phone_number: editedValues.phone_number,
+            is_active: editedValues.is_active,
+          },
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+
+        updatedUserData = {
+          ...user,
+          phone_number: editedValues.phone_number,
+          is_active: editedValues.is_active
+        };
+
+        setMembers((prevMembers) =>
+          prevMembers.map((member) =>
+            member.id === user.id ? updatedUserData : member
+          )
+        );
+      }
+
       setEditingUser(null);
+      setError(""); // Clear error if successful
     } catch (error) {
-      console.error("Error updating user:", error);
-      setError(error.message);
+      console.log("Error updating user:", error);
+
+      // Extract message from Axios error
+      let errorMessage = "Unexpected error occurred.";
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      // Handle duplicate key error specifically
+      if (errorMessage.includes("duplicate key value violates unique constraint")) {
+        errorMessage = "This phone number  is already in use.";
+      }
+
+      setError(errorMessage); // Set error message to be displayed in UI
     }
   };
 
-  const handleCancel = () => {
-    setEditingUser(null);
-  };
 
-  const handleCancelUpgrade = async (user) => {
+
+  const handleCancelUpgrade = async () => {
+    if (!userToCancel) return;
+
+    setIsCancelling(true); // Show "Cancelling..."
+
     try {
       const accessToken = Cookies.get("access_token");
+
       await api.put(
         "update_user_details/",
         {
-          email: user.email,
-          action: 'cancel',
+          email: userToCancel.email,
+          action: "cancel",
         },
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
+
       setMembers((prevMembers) =>
         prevMembers.map((member) =>
-          member.id === user.id
+          member.id === userToCancel.id
             ? {
-                ...member,
-                subscriptions: (Array.isArray(member.subscriptions) ? member.subscriptions : []).map((sub) => ({
-                  ...sub,
-                  status: 'cancelled',
-                })),
-              }
+              ...member,
+              subscriptions: member.subscriptions
+                ? {
+                  ...member.subscriptions,
+                  name: "N/A",
+                  end_date: "N/A",
+                  status: "cancelled",
+                }
+                : null,
+            }
             : member
         )
       );
-      setTrainers((prevTrainers) =>
-        prevTrainers.map((trainer) =>
-          trainer.id === user.id
-            ? {
-                ...trainer,
-                subscriptions: (Array.isArray(trainer.subscriptions) ? trainer.subscriptions : []).map((sub) => ({
-                  ...sub,
-                  status: 'cancelled',
-                })),
-              }
-            : trainer
-        )
-      );
+
+      closeCancelModal(); // Close modal after success
     } catch (error) {
-      console.error("Error cancelling upgrade:", error);
-      setError(error.message);
+      console.error("Error cancelling subscription:", error);
+    } finally {
+      setIsCancelling(false); // Reset button state
     }
   };
 
-  const handleReactivate = async (user) => {
-    try {
-      const accessToken = Cookies.get("access_token");
-      await api.put(
-        "update_user_details/",
-        {
-          email: user.email,
-          action: 'upgrade',
-          new_plan_id: user.subscriptions?.[0]?.id, // Safely access the first subscription's ID
-        },
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-      setMembers((prevMembers) =>
-        prevMembers.map((member) =>
-          member.id === user.id
-            ? {
-                ...member,
-                subscriptions: (Array.isArray(member.subscriptions) ? member.subscriptions : []).map((sub) => ({
-                  ...sub,
-                  status: 'active',
-                })),
-              }
-            : member
-        )
-      );
-      setTrainers((prevTrainers) =>
-        prevTrainers.map((trainer) =>
-          trainer.id === user.id
-            ? {
-                ...trainer,
-                subscriptions: (Array.isArray(trainer.subscriptions) ? trainer.subscriptions : []).map((sub) => ({
-                  ...sub,
-                  status: 'active',
-                })),
-              }
-            : trainer
-        )
-      );
-    } catch (error) {
-      console.error("Error reactivating plan:", error);
-      setError(error.message);
-    }
-  };
+
 
   const handleUpgradePlan = async (user) => {
     try {
@@ -246,6 +271,7 @@ const Dashboard = () => {
       });
       setAvailablePlans(response.data);
       setSelectedUser(user);
+      setSelectedPlanId(null); // Reset selected plan when opening modal
       setShowPlansModal(true);
     } catch (error) {
       console.error("Error fetching plans:", error);
@@ -276,38 +302,53 @@ const Dashboard = () => {
         }
       );
 
+      // Find the selected plan details for immediate UI update
+      const selectedPlan = availablePlans.find(plan => plan.id === selectedPlanId);
+
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setMonth(startDate.getMonth() + (selectedPlan.duration || 1));
       // Update the user's subscriptions in the UI
-      setMembers((prevMembers) =>
-        prevMembers.map((member) =>
+      setMembers(prevMembers =>
+        prevMembers.map(member =>
           member.id === selectedUser.id
             ? {
-                ...member,
-                subscriptions: (Array.isArray(member.subscriptions) ? member.subscriptions : []).map((sub) =>
-                  sub.id === selectedPlanId ? { ...sub, status: 'active' } : sub
-                ),
-              }
+              ...member,
+              subscriptions: {
+                id: selectedPlanId,
+                name: selectedPlan.name,
+                status: "active",
+                duration: selectedPlan.duration,
+                price: selectedPlan.price,
+                has_personal_training: selectedPlan.personal_training,
+                end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0], // Ensure end date is updated
+              },
+            }
             : member
         )
       );
 
-      setTrainers((prevTrainers) =>
-        prevTrainers.map((trainer) =>
-          trainer.id === selectedUser.id
-            ? {
-                ...trainer,
-                subscriptions: (Array.isArray(trainer.subscriptions) ? trainer.subscriptions : []).map((sub) =>
-                  sub.id === selectedPlanId ? { ...sub, status: 'active' } : sub
-                ),
-              }
-            : trainer
-        )
-      );
+      // Update selected user in UI
+      setSelectedUser(prev => ({
+        ...prev,
+        subscriptions: {
+          id: selectedPlanId,
+          name: selectedPlan.name,
+          status: "active",
+          duration: selectedPlan.duration,
+          price: selectedPlan.price,
+          has_personal_training: selectedPlan.personal_training,
+          end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0], // Ensure end date is updated
+        },
+      }));
 
-      setUpdateSuccess(true); // Show success message
       setTimeout(() => {
-        setShowPlansModal(false); // Close modal after success
         setIsUpdating(false); // Stop updating animation
-      }, 1000); // Wait for 1 second before closing
+        // Keep the modal open for a moment so user can see success message
+        setTimeout(() => {
+          setShowPlansModal(false); // Close modal after success
+        }, 1000);
+      }, 1000);
     } catch (error) {
       console.error("Error upgrading plan:", error);
       setError(error.message);
@@ -472,6 +513,7 @@ const Dashboard = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trainer</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -489,25 +531,20 @@ const Dashboard = () => {
                               </div>
                               <div className="ml-3">
                                 <div className="text-sm font-medium text-gray-900">{user.name}</div>
-
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {editingUser === user.id ? (
                               <>
-                                <input
-                                  type="email"
-                                  className="text-sm text-gray-900 border border-gray-300 rounded-md px-2 py-1"
-                                  value={editedValues.email}
-                                  onChange={(e) => setEditedValues({ ...editedValues, email: e.target.value })}
-                                />
+                                <div className="text-sm text-gray-900">{user.email}</div>
                                 <input
                                   type="text"
                                   className="text-xs text-gray-500 border border-gray-300 rounded-md px-2 py-1 mt-1"
                                   value={editedValues.phone_number}
                                   onChange={(e) => setEditedValues({ ...editedValues, phone_number: e.target.value })}
                                 />
+                                {error && <p className="text-red-500 text-sm">{error}</p>}
                               </>
                             ) : (
                               <>
@@ -527,6 +564,7 @@ const Dashboard = () => {
                                 </span>
                               </td>
 
+
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800">
                                   {user.subscriptions && typeof user.subscriptions === "object"
@@ -534,6 +572,8 @@ const Dashboard = () => {
                                     : "N/A"}
                                 </span>
                               </td>
+
+
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {editingUser === user.id ? (
                                   <select
@@ -554,9 +594,32 @@ const Dashboard = () => {
                           ) : (
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
-                                  {user.trainer_profile ? user.trainer_profile.specialization : "N/A"}
-                                </span>
+                                {editingUser === user.id ? (
+                                  <input
+                                    type="text"
+                                    className="text-xs text-gray-900 border border-gray-300 rounded-md px-2 py-1"
+                                    value={editedValues.specialization}
+                                    onChange={(e) => setEditedValues({ ...editedValues, specialization: e.target.value })}
+                                  />
+                                ) : (
+                                  <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
+                                    {user.trainer_profile ? user.trainer_profile.specialization : "N/A"}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {editingUser === user.id ? (
+                                  <input
+                                    type="text"
+                                    className="text-xs text-gray-900 border border-gray-300 rounded-md px-2 py-1"
+                                    value={editedValues.experience}
+                                    onChange={(e) => setEditedValues({ ...editedValues, experience: e.target.value })}
+                                  />
+                                ) : (
+                                  <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
+                                    {user.trainer_profile ? user.trainer_profile.experience : "N/A"}
+                                  </span>
+                                )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {editingUser === user.id ? (
@@ -607,28 +670,14 @@ const Dashboard = () => {
                                   >
                                     <Edit className="h-5 w-5" />
                                   </button>
-                                  <button
-                                    onClick={() => handleDisable(user.id)}
-                                    className="text-red-500 hover:text-red-700"
-                                    title="Disable"
-                                  >
-                                    <XCircle className="h-5 w-5" />
-                                  </button>
                                   {activeTab === "members" && (
                                     <>
                                       <button
-                                        onClick={() => handleCancelUpgrade(user)}
+                                        onClick={() => openCancelModal(user)}
                                         className="text-yellow-500 hover:text-yellow-700"
                                         title="Cancel Upgrade"
                                       >
                                         <Trash2 className="h-5 w-5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleReactivate(user)}
-                                        className="text-green-500 hover:text-green-700"
-                                        title="Reactivate"
-                                      >
-                                        <RefreshCw className="h-5 w-5" />
                                       </button>
                                       <button
                                         onClick={() => handleUpgradePlan(user)}
@@ -648,6 +697,33 @@ const Dashboard = () => {
                     </tbody>
                   </table>
                 </div>
+
+                {showCancelModal && (
+                  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                      <h2 className="text-xl font-semibold mb-4">Confirm Cancellation</h2>
+                      <p>Are you sure you want to cancel the plan for <strong>{userToCancel?.email}</strong>?</p>
+
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          className="px-4 py-2 bg-gray-300 text-gray-700 rounded mr-2"
+                          onClick={closeCancelModal}
+                          disabled={isCancelling} // Disable if cancelling
+                        >
+                          No, Keep Plan
+                        </button>
+                        <button
+                          className="px-4 py-2 bg-red-600 text-white rounded"
+                          onClick={handleCancelUpgrade}
+                          disabled={isCancelling} // Disable if cancelling
+                        >
+                          {isCancelling ? "Cancelling..." : "Yes, Cancel Plan"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
 
                 <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
                   <div className="text-sm text-gray-500">
@@ -671,50 +747,81 @@ const Dashboard = () => {
 
       {showPlansModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h2 className="text-xl font-bold mb-4">Select a Plan</h2>
-            <ul className="space-y-2">
-              {availablePlans.map((plan) => (
-                <li key={plan.id} className="flex justify-between items-center">
-                  <span>{plan.name}</span>
-                  <button
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Select a Plan for {selectedUser?.name}</h2>
+
+            {selectedUser && selectedUser.subscriptions && selectedUser.subscriptions.length > 0 && (
+              <div className="mb-4 p-3 bg-gray-100 rounded-lg">
+                <h3 className="font-medium text-gray-700">Current Plan</h3>
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">{selectedUser.subscriptions[0].name}</span>
+                  {selectedUser.subscriptions[0].duration &&
+                    <span> • {selectedUser.subscriptions[0].duration} months</span>}
+                  <span> • {selectedUser.subscriptions[0].personal_training ? 'Includes' : 'No'} personal training</span>
+                </p>
+              </div>
+            )}
+
+            <div className="max-h-60 overflow-y-auto">
+              <ul className="space-y-3">
+                {availablePlans.map((plan) => (
+                  <li
+                    key={plan.id}
+                    className={`border rounded-lg p-3 flex justify-between items-center ${selectedPlanId === plan.id ? "border-green-500 bg-green-50" : "border-gray-200"
+                      }`}
                     onClick={() => setSelectedPlanId(plan.id)}
-                    className={`px-4 py-2 text-white rounded-md ${
-                      selectedPlanId === plan.id ? "bg-green-600" : "bg-green-500 hover:bg-green-600"
-                    }`}
                   >
-                    Select
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 flex justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium">{plan.name}</div>
+                      <div className="text-sm text-gray-600">
+                        {plan.duration && <span>{plan.duration} months • </span>}
+                        <span>{plan.personal_training ? 'Includes' : 'No'} personal training</span>
+                        {plan.price && <span> • ₹{plan.price}</span>}
+                      </div>
+                    </div>
+                    <div className={`h-5 w-5 rounded-full ${selectedPlanId === plan.id
+                      ? "bg-green-500 border-green-500"
+                      : "border border-gray-300"
+                      }`}>
+                      {selectedPlanId === plan.id && (
+                        <Check className="h-5 w-5 text-white" />
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
               <button
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 onClick={() => setShowPlansModal(false)}
-                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
               >
                 Cancel
               </button>
               <button
+                className={`px-4 py-2 rounded-md ${!selectedPlanId
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-orange-500 hover:bg-orange-600 text-white"
+                  }`}
                 onClick={handlePlanSelection}
-                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
-                disabled={isUpdating}
+                disabled={!selectedPlanId || isUpdating}
               >
                 {isUpdating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
                     Updating...
-                  </>
+                  </div>
+                ) : updateSuccess ? (
+                  <div className="flex items-center">
+                    <Check className="h-4 w-4 mr-2" />
+                    Updated!
+                  </div>
                 ) : (
-                  "Update"
+                  "Confirm Upgrade"
                 )}
               </button>
             </div>
-            {updateSuccess && (
-              <div className="mt-4 text-green-600 text-center">
-                Updated successfully!
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -723,8 +830,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
-// Dummy function for handleDisable
-const handleDisable = (id) => {
-  console.log("Disable user with ID:", id);
-};
