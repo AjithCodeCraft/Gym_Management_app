@@ -58,6 +58,7 @@ class LightweightUserSerializer(serializers.ModelSerializer):
         # Lightweight trainer profile
         if hasattr(obj, 'trainer_profile'):
             return {
-                'specialization': obj.trainer_profile.specialization
+                'specialization': obj.trainer_profile.specialization,
+                'experience' : obj.trainer_profile.experience_years
             }
         return None

@@ -357,7 +357,6 @@ def login_user(request):
 
 
 @api_view(['GET'])
-@cache_page(60 * 15)  # Cache the view for 15 minutes
 def list_subscriptions(request):
     if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
         return Response({"detail": "You do not have permission to perform this action."}, status=status.HTTP_403_FORBIDDEN)
@@ -372,8 +371,7 @@ def list_subscriptions(request):
     subscriptions = Subscription.objects.all()  # Remove select_related if not needed
     serializer = SubscriptionSerializer(subscriptions, many=True)
 
-    # Cache the data
-    cache.set(cache_key, serializer.data, timeout=60*15)  # Cache timeout set to 15 minutes
+    
 
     return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -501,15 +499,14 @@ def list_users_and_trainers(request):
         ).prefetch_related(
             'subscriptions__subscription'
         ).filter(
-            user_type=user_type,
-            is_active=True  # Only active users
+            user_type=user_type
+           # Only active users
         ).order_by('-created_at')  # Most recent first
 
         # Serialize the data
         serializer = LightweightUserSerializer(users, many=True)
 
-        # Cache the serialized data for 1 hour
-        cache.set(cache_key, serializer.data, timeout=60*15)  # 1 hour in seconds
+        
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
