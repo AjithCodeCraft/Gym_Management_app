@@ -161,9 +161,9 @@ const AddMember = () => {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
-        setError("Phone number Already exist ");
+        setError("An error occurred while registering the member.");
       }
-      //console.error("Registration error:", err);
+      console.error("Registration error:", err);
     } finally {
       setLoading(false);
     }
@@ -210,7 +210,7 @@ const AddMember = () => {
         setOtpButtonText("Get OTP");
       }
     } catch (err) {
-     // console.error("OTP Error:", err);
+      console.error("OTP Error:", err);
       setOtpError("An error occurred while sending OTP.");
       setOtpButtonText("Get OTP");
     } finally {
