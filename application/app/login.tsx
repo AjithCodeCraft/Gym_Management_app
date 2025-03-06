@@ -3,10 +3,11 @@ import { View, Text, TextInput, TouchableOpacity, Image, Alert, Modal, StyleShee
 import { Redirect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons"; // For icons
 import axios from "axios";
-import Constants from "expo-constants";
+// import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const API_URL =  Constants?.expoConfig?.extra?.API_URL;
+import Constants from 'expo-constants';
+import api from '../api/axios';
+const API_URL = Constants.expoConfig?.extra?.API_URL;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  console.log('url',API_URL);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -25,7 +27,7 @@ export default function LoginPage() {
       password: password
     };
     try {
-        const response = await axios.post(`${API_URL}/api/login/`, credentials, {
+        const response = await api.post(`/login/`, credentials, {
           headers: {
             "Content-Type": "application/json"
           }

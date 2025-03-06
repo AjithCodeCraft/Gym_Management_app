@@ -163,7 +163,7 @@ const AddMember = () => {
       } else {
         setError("An error occurred while registering the member.");
       }
-      console.error("Registration error:", err);
+      console.log("Registration error:", err);
     } finally {
       setLoading(false);
     }

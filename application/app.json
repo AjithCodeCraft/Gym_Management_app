@@ -38,7 +38,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "API_URL": "https://aaed-111-92-112-134.ngrok-free.app"
+      "API_URL": "http://127.0.0.1:8000"
     }
   }
 }
