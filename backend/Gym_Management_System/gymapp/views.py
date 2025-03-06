@@ -33,7 +33,7 @@ def send_otp(request):
 
     # Check if email already exists in MongoDB
     if User.objects.filter(email=email).exists():
-        return Response({'error': 'Email already exists in MongoDB'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Generate a 6-digit OTP
     otp = random.randint(100000, 999999)
@@ -120,16 +120,26 @@ def register_user(request):
     if not email or not phone:
         return Response({'error': 'Email and phone are required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Check if email exists in Firebase
     try:
         auth.get_user_by_email(email)
         return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+    except auth.UserNotFoundError:
+        pass  # Email does not exist, continue checking phone number
+
+    # Check if phone number exists in Firebase
+    try:
+        auth.get_user_by_phone_number(phone)
+        return Response({'error': 'Phone number already exists'}, status=status.HTTP_400_BAD_REQUEST)
     except auth.UserNotFoundError:
         pass
 
     # Check if email exists in Django
     if User.objects.filter(email=email).exists():
-        return Response({'error': 'Email already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Email already exists '}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if phone number exists in Django User model
+    if User.objects.filter(phone_number=phone).exists():
+        return Response({'error': 'Phone number already exists '}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         # Create user in Firebase

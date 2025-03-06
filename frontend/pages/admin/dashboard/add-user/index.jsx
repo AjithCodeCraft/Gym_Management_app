@@ -48,6 +48,8 @@ const AddMember = () => {
   const [otpButtonColor, setOtpButtonColor] = useState("bg-[#ea580c]");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+
 
   // Fetch subscription plans from API with authentication
   useEffect(() => {
@@ -119,13 +121,14 @@ const AddMember = () => {
     setLoading(true);
     setError("");
     setSuccessMessage("");
-
+    setFieldErrors({}); // Clear previous field-specific errors
+  
     if (!otpVerified) {
       setError("Please verify your email with OTP.");
       setLoading(false);
       return;
     }
-
+  
     // Check if the selected plan ID exists
     const selectedPlan = plans.find((plan) => plan.id === formData.subscription_plan_id);
     if (!selectedPlan) {
@@ -133,24 +136,24 @@ const AddMember = () => {
       setLoading(false);
       return;
     }
-
+  
     // Ensure gender is set
     if (!formData.gender) {
       setError("Please select a gender.");
       setLoading(false);
       return;
     }
-
+  
     // Format the phone number to E.164 format
     const formattedPhoneNumber = `+91${formData.phone_number}`;
-
+  
     try {
       const response = await api.post("register/", {
         ...formData,
         phone_number: formattedPhoneNumber, // Use the formatted phone number
         user_type: "user",
       });
-
+  
       if (response.data.success) {
         setSuccessMessage("Member added successfully! Login credentials sent to their email.");
         setShowPopup(true); // Show the popup
@@ -158,8 +161,17 @@ const AddMember = () => {
         setError(response.data.message || "Failed to add member.");
       }
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
+      if (err.response && err.response.data) {
+        const { error } = err.response.data;
+  
+        // Handle specific errors and assign them to respective fields
+        if (error.includes("Email already exists")) {
+          setFieldErrors((prev) => ({ ...prev, email: "Email already exists" }));
+        } else if (error.includes("Phone number already exists")) {
+          setFieldErrors((prev) => ({ ...prev, phone_number: "Phone number already exists" }));
+        } else {
+          setError(error || "An error occurred while registering the member.");
+        }
       } else {
         setError("An error occurred while registering the member.");
       }
@@ -168,55 +180,67 @@ const AddMember = () => {
       setLoading(false);
     }
   };
+  
 
   const handleLogin = () => {
     router.push("/login");
   };
 
   const handleRedirect = () => {
-    router.push("http://localhost:3000/admin/dashboard");
+    router.push("/admin/dashboard");
   };
 
   // OTP Functions (API-based)
   const handleGetOtp = async () => {
     if (!formData.email) {
-      setOtpError("Please enter an email address first.");
+      setFieldErrors((prev) => ({ ...prev, email: "Please enter an email address first." }));
       return;
     }
-
+  
     setSendingOtp(true);
     setOtpButtonText("Sending...");
-
+    setFieldErrors({}); // Clear previous field-specific errors
+  
     try {
       const response = await api.post("send-otp/", { email: formData.email });
       console.log("OTP Response:", response.data);
-
+  
       if (
         response.data &&
         (response.data.success ||
           response.data.message === "OTP sent. Verify OTP to complete registration.")
       ) {
         setOtpSent(true);
-        setOtpError("");
         setCountdown(45); // Start the countdown
         setOtpButtonText("Resend OTP");
-
+  
         // Force state update and then open dialog
         setTimeout(() => {
           setIsOtpDialogOpen(true);
         }, 100);
       } else {
-        setOtpError("Failed to send OTP. Please try again.");
+        setFieldErrors((prev) => ({ ...prev, email: "Failed to send OTP. Please try again." }));
         setOtpButtonText("Get OTP");
       }
     } catch (err) {
-      console.error("OTP Error:", err);
-      setOtpError("An error occurred while sending OTP.");
+      console.log("OTP Error:", err);
+  
+      if (err.response && err.response.data && err.response.data.error) {
+        if (err.response.data.error.includes("Email already exists")) {
+          setFieldErrors((prev) => ({ ...prev, email: "Email already exists." }));
+        } else {
+          setFieldErrors((prev) => ({ ...prev, email: err.response.data.error }));
+        }
+      } else {
+        setFieldErrors((prev) => ({ ...prev, email: "An error occurred while sending OTP." }));
+      }
+  
       setOtpButtonText("Get OTP");
     } finally {
       setSendingOtp(false);
     }
   };
+  
 
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
@@ -371,6 +395,8 @@ const AddMember = () => {
                         className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         required
                       />
+                        {fieldErrors.email && <p className="text-red-500">{fieldErrors.email}</p>}
+
                       <Button
                         type="button"
                         onClick={handleGetOtp}
@@ -388,6 +414,7 @@ const AddMember = () => {
                           otpButtonText
                         )}
                       </Button>
+
                     </div>
                   </div>
                   <div>
@@ -408,6 +435,7 @@ const AddMember = () => {
                           e.target.value = e.target.value.replace(/[^0-9]/g, "");
                         }}
                       />
+                      {fieldErrors.phone_number && <p className="text-red-500">{fieldErrors.phone_number}</p>}
                     </div>
                   </div>
                   <div>
