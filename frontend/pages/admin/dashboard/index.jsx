@@ -25,6 +25,7 @@ const Dashboard = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [userToCancel, setUserToCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
 
   // Fetch both members and trainers data when the component mounts
   useEffect(() => {
@@ -105,12 +106,18 @@ const Dashboard = () => {
 
   const openCancelModal = (user) => {
     setUserToCancel(user);
+    setCancelError(null);
     setShowCancelModal(true);
   };
 
   const closeCancelModal = () => {
     setShowCancelModal(false);
+    setCancelError(null);
     setUserToCancel(null);
+  };
+
+  const handleCancel = () => {
+    setEditingUser(null);
   };
 
   const handleEdit = (user) => {
@@ -218,13 +225,14 @@ const Dashboard = () => {
 
   const handleCancelUpgrade = async () => {
     if (!userToCancel) return;
-
+  
     setIsCancelling(true); // Show "Cancelling..."
-
+    setCancelError(null);  // Clear previous errors before making API call
+  
     try {
       const accessToken = Cookies.get("access_token");
-
-      await api.put(
+  
+      const response = await api.put(
         "update_user_details/",
         {
           email: userToCancel.email,
@@ -234,33 +242,48 @@ const Dashboard = () => {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
-
+  
+      // Check if API response contains the error message
+      if (response.data?.error?.includes("No active subscription found")) {
+        setCancelError("No active subscription found.");
+        setIsCancelling(false);
+        return;
+      }
+  
+      // Update members list
       setMembers((prevMembers) =>
         prevMembers.map((member) =>
           member.id === userToCancel.id
             ? {
-              ...member,
-              subscriptions: member.subscriptions
-                ? {
-                  ...member.subscriptions,
-                  name: "N/A",
-                  end_date: "N/A",
-                  status: "cancelled",
-                }
-                : null,
-            }
+                ...member,
+                subscriptions: member.subscriptions
+                  ? {
+                      ...member.subscriptions,
+                      name: "N/A",
+                      end_date: "N/A",
+                      status: "cancelled",
+                    }
+                  : null,
+              }
             : member
         )
       );
-
+  
       closeCancelModal(); // Close modal after success
     } catch (error) {
-      console.error("Error cancelling subscription:", error);
+      console.log("Error cancelling subscription:", error);
+  
+      if (error.response?.data?.error) {
+        setCancelError(error.response.data.error);
+      } else {
+        setCancelError("Something went wrong. Please try again.");
+      }
     } finally {
       setIsCancelling(false); // Reset button state
     }
   };
-
+  
+  // Call this when closing the modal
 
 
   const handleUpgradePlan = async (user) => {
@@ -703,6 +726,7 @@ const Dashboard = () => {
                     <div className="bg-white p-6 rounded-lg shadow-lg w-96">
                       <h2 className="text-xl font-semibold mb-4">Confirm Cancellation</h2>
                       <p>Are you sure you want to cancel the plan for <strong>{userToCancel?.email}</strong>?</p>
+                      {cancelError && <p className="text-red-500 mt-2">{cancelError}</p>} {/* Show error message */}
 
                       <div className="mt-4 flex justify-end">
                         <button
