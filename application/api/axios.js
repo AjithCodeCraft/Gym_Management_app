@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-const API_BASE_URL = 'https://3d22-2409-40f3-201c-210a-59cd-5979-a31d-d70d.ngrok-free.app/api/'; // Replace with your actual backend URL
+const API_BASE_URL = 'http://127.0.0.1:8000/api/'; // Replace with your actual backend URL
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -8,5 +9,25 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+export const apiAuth = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+apiAuth.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem("access_token");
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;

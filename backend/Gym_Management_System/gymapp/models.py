@@ -1,15 +1,14 @@
 from uuid import uuid4
+
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 import uuid
 
 
-
-
 class Demo(models.Model):
     name = models.CharField(max_length=20)
     age = models.IntegerField()
-
 
 
 class UserManager(BaseUserManager):
@@ -41,11 +40,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('female', 'Female'),
         ('others', 'Others')
     ]
-    
+
     id = models.AutoField(primary_key=True)
-    user_id = models.CharField(max_length=28, unique=True) 
+    user_id = models.CharField(max_length=28, unique=True)
     email = models.EmailField(unique=True)
-    password = models.TextField()  
+    password = models.TextField()
     name = models.CharField(max_length=120)
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES)
     date_of_birth = models.DateField(blank=True, null=True)
@@ -55,9 +54,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     objects = UserManager()
-    
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name', 'phone_number']
 
@@ -69,8 +68,6 @@ class OTPVerification(models.Model):
 
     def __str__(self):
         return self.email
-
-
 
 
 class UserProfile(models.Model):
@@ -86,7 +83,6 @@ class UserProfile(models.Model):
         return f"{self.user.name}'s Profile"
 
 
-
 class TrainerProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField('User', on_delete=models.CASCADE, related_name='trainer_profile')
@@ -98,18 +94,18 @@ class TrainerProfile(models.Model):
         choices=[("Morning", "Morning"), ("Evening", "Evening"), ("Both", "Both")],
         default="Both"
     )
-    salary = models.DecimalField(max_digits=10, decimal_places=2) 
+    salary = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
         return f"{self.user.name} - {self.specialization}"
-    
+
 
 class Subscription(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     description = models.TextField()
     duration = models.IntegerField(help_text="Duration of the subscription in months")
-    personal_training = models.BooleanField(default = 'False')
+    personal_training = models.BooleanField(default='False')
     price = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -120,7 +116,7 @@ class Subscription(models.Model):
 
 class UserSubscription(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    
+
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('expired', 'Expired'),
@@ -163,19 +159,18 @@ class WorkoutDay(models.Model):
         return f"{self.workout_plan.name} - Day {self.days_of_week} ({self.focus})"
 
 
-    
 class Exercise(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, help_text="Name of the exercise")
     description = models.TextField(help_text="Detailed description of the exercise")
     muscle_group = models.CharField(max_length=255, help_text="Primary muscle group targeted (e.g., Chest, Legs, Arms)")
-    equipment = models.CharField(max_length=255, blank=True, null=True, help_text="Equipment required (e.g., Dumbbell, Barbell, Bodyweight)")
+    equipment = models.CharField(max_length=255, blank=True, null=True,
+                                 help_text="Equipment required (e.g., Dumbbell, Barbell, Bodyweight)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name} ({self.muscle_group})"
-
 
 
 class WorkoutExercise(models.Model):
@@ -192,11 +187,11 @@ class WorkoutExercise(models.Model):
     def __str__(self):
         return f"{self.workout_day} - {self.exercise.name} (Sets: {self.sets}, Reps: {self.reps})"
 
-    
 
 class MealType(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100, unique=True, help_text="Type of meal (e.g., Breakfast, Lunch, Dinner, Snack)")
+    name = models.CharField(max_length=100, unique=True,
+                            help_text="Type of meal (e.g., Breakfast, Lunch, Dinner, Snack)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -221,7 +216,6 @@ class NutritionLog(models.Model):
         return f"{self.user.name} - {self.food_item} ({self.log_date})"
 
 
-
 class Attendance(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='attendance_records')
@@ -233,7 +227,6 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"Attendance - {self.user.name} ({self.status})"
-
 
 
 class Payment(models.Model):
@@ -259,7 +252,6 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment {self.id} - {self.trainer.name} ({self.status})"
-
 
 
 class TrainerSalary(models.Model):
@@ -293,7 +285,6 @@ class UserProgress(models.Model):
         return f"Progress of {self.user.name} on {self.measurement_date}"
 
 
-
 class SleepLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='sleep_logs')
@@ -305,7 +296,6 @@ class SleepLog(models.Model):
 
     def __str__(self):
         return f"Sleep Log for {self.user.name} on {self.sleep_date}"
-    
 
 
 class UserWorkout(models.Model):
@@ -318,7 +308,6 @@ class UserWorkout(models.Model):
 
     def __str__(self):
         return f"Workout for {self.user.name} on {self.completed_date}"
-
 
 
 class UserCompletedExercise(models.Model):
@@ -334,7 +323,6 @@ class UserCompletedExercise(models.Model):
 
     def __str__(self):
         return f"{self.user_workout.user.name} - {self.exercise.name} ({'Completed' if self.completed else 'Pending'})"
-    
 
 
 class Challenge(models.Model):
@@ -348,3 +336,39 @@ class Challenge(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class NutritionGoal(models.Model):
+    ACTIVITY_LEVEL_CHOICES = [
+        ("sedentary", "Sedentary"),
+        ("light", "Light"),
+        ("moderate", "Moderate"),
+        ("active", "Active"),
+        ("very_active", "Very Active")
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="nutrition_goal")
+    height = models.IntegerField(
+        default=165,
+        validators=[
+            MinValueValidator(50),
+            MaxValueValidator(300)
+        ],
+        blank=False,
+        null=False
+    )
+    weight = models.IntegerField(default=65, validators=[
+        MinValueValidator(25),
+        MaxValueValidator(1000)
+    ], blank=False, null=False)
+    age = models.IntegerField(default=16, blank=False, null=False)
+    activity_level = models.CharField(max_length=15, choices=ACTIVITY_LEVEL_CHOICES, default="sedentary",
+                                      verbose_name="Activity Level"
+    )
+    breakfast = models.JSONField(default=list)
+    morning_snack = models.JSONField(default=list)
+    lunch = models.JSONField(default=list)
+    evening_snack = models.JSONField(default=list)
+    dinner = models.JSONField(default=list)
+    created_at = models.DateField(auto_now_add=True)

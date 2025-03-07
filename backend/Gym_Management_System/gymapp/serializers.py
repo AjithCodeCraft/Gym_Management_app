@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subscription, User, UserSubscription
+from .models import Subscription, User, UserSubscription, NutritionGoal
 
 
 
@@ -62,3 +62,11 @@ class LightweightUserSerializer(serializers.ModelSerializer):
                 'experience' : obj.trainer_profile.experience_years
             }
         return None
+
+class NutritionGoalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NutritionGoal
+        fields = ['user', 'height', 'weight', 'age', 'activity_level', 'breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']
+        extra_args = {
+            'user': {'required': False}
+        }
