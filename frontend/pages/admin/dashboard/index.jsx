@@ -26,6 +26,8 @@ const Dashboard = () => {
   const [userToCancel, setUserToCancel] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
+  const [errors, setErrors] = useState({});
+
 
   // Fetch both members and trainers data when the component mounts
   useEffect(() => {
@@ -118,6 +120,8 @@ const Dashboard = () => {
 
   const handleCancel = () => {
     setEditingUser(null);
+    setError("");
+    setErrors({});
   };
 
   const handleEdit = (user) => {
@@ -127,6 +131,7 @@ const Dashboard = () => {
         phone_number: user.phone_number || "",
         specialization: user.trainer_profile?.specialization || "",
         experience: user.trainer_profile?.experience || "",
+        salary: user.trainer_profile?.salary || "",
         is_active: user.is_active
       });
     } else {
@@ -139,8 +144,43 @@ const Dashboard = () => {
 
   const handleSave = async (user) => {
     try {
+      const phoneNumberPattern = /^\+91\d{10}$/; // Ensure valid phone number
+      const specializationPattern = /^[A-Za-z\s]+$/;
+      let newErrors = {}; // Object to store field errors
+
+      if (!phoneNumberPattern.test(editedValues.phone_number)) {
+        newErrors.phone_number = "Phone number must be in the format +91xxxxxxxxxx.";
+      }
+
+      if (activeTab === "trainers") {
+        if (!editedValues.specialization || editedValues.specialization.length < 3) {
+          newErrors.specialization = "Specialization must be at least 3 characters long.";
+        } else if (!specializationPattern.test(editedValues.specialization)) {
+          newErrors.specialization = "Specialization must contain only alphabets.";
+        }
+
+        if (!editedValues.experience || isNaN(editedValues.experience)) {
+          newErrors.experience = "Experience must be a valid number.";
+        }
+
+        if (!editedValues.salary || editedValues.salary <= 0) {
+          newErrors.salary = "Salary must be greater than zero.";
+        }
+      }
+
+      // Ensure all required fields are filled
+      if (!editedValues.phone_number || editedValues.is_active === null) {
+        newErrors.general = "All fields are required.";
+      }
+
+      // If there are errors, update state and stop execution
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);  // Set the new error object
+        return;
+      }
+
       const accessToken = Cookies.get("access_token");
-      let updatedUserData = { ...user }; // Clone user data for immediate update
+      let updatedUserData = { ...user };
 
       if (activeTab === "trainers") {
         await api.put(
@@ -150,6 +190,7 @@ const Dashboard = () => {
             phone_number: editedValues.phone_number,
             specialization: editedValues.specialization,
             experience: editedValues.experience,
+            salary: editedValues.salary,
             is_active: editedValues.is_active,
           },
           {
@@ -164,8 +205,9 @@ const Dashboard = () => {
           trainer_profile: {
             ...user.trainer_profile,
             specialization: editedValues.specialization,
-            experience: editedValues.experience
-          }
+            experience: editedValues.experience,
+            salary: editedValues.salary,
+          },
         };
 
         setTrainers((prevTrainers) =>
@@ -189,7 +231,7 @@ const Dashboard = () => {
         updatedUserData = {
           ...user,
           phone_number: editedValues.phone_number,
-          is_active: editedValues.is_active
+          is_active: editedValues.is_active,
         };
 
         setMembers((prevMembers) =>
@@ -200,11 +242,10 @@ const Dashboard = () => {
       }
 
       setEditingUser(null);
-      setError(""); // Clear error if successful
+      setErrors({}); // Clear all errors on successful save
     } catch (error) {
       console.log("Error updating user:", error);
 
-      // Extract message from Axios error
       let errorMessage = "Unexpected error occurred.";
       if (error.response?.data?.detail) {
         errorMessage = error.response.data.detail;
@@ -212,26 +253,28 @@ const Dashboard = () => {
         errorMessage = error.response.data.error;
       }
 
-      // Handle duplicate key error specifically
+      // Preserve duplicate phone number error
       if (errorMessage.includes("duplicate key value violates unique constraint")) {
-        errorMessage = "This phone number  is already in use.";
+        setErrors({ phone_number: "This phone number is already in use." });
+      } else {
+        setErrors({ general: errorMessage });
       }
-
-      setError(errorMessage); // Set error message to be displayed in UI
     }
   };
 
 
 
+
+
   const handleCancelUpgrade = async () => {
     if (!userToCancel) return;
-  
+
     setIsCancelling(true); // Show "Cancelling..."
     setCancelError(null);  // Clear previous errors before making API call
-  
+
     try {
       const accessToken = Cookies.get("access_token");
-  
+
       const response = await api.put(
         "update_user_details/",
         {
@@ -242,37 +285,37 @@ const Dashboard = () => {
           headers: { Authorization: `Bearer ${accessToken}` },
         }
       );
-  
+
       // Check if API response contains the error message
       if (response.data?.error?.includes("No active subscription found")) {
         setCancelError("No active subscription found.");
         setIsCancelling(false);
         return;
       }
-  
+
       // Update members list
       setMembers((prevMembers) =>
         prevMembers.map((member) =>
           member.id === userToCancel.id
             ? {
-                ...member,
-                subscriptions: member.subscriptions
-                  ? {
-                      ...member.subscriptions,
-                      name: "N/A",
-                      end_date: "N/A",
-                      status: "cancelled",
-                    }
-                  : null,
-              }
+              ...member,
+              subscriptions: member.subscriptions
+                ? {
+                  ...member.subscriptions,
+                  name: "N/A",
+                  end_date: "N/A",
+                  status: "cancelled",
+                }
+                : null,
+            }
             : member
         )
       );
-  
+
       closeCancelModal(); // Close modal after success
     } catch (error) {
       console.log("Error cancelling subscription:", error);
-  
+
       if (error.response?.data?.error) {
         setCancelError(error.response.data.error);
       } else {
@@ -282,7 +325,7 @@ const Dashboard = () => {
       setIsCancelling(false); // Reset button state
     }
   };
-  
+
   // Call this when closing the modal
 
 
@@ -537,6 +580,7 @@ const Dashboard = () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Salary</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -568,7 +612,9 @@ const Dashboard = () => {
                                   onChange={(e) => setEditedValues({ ...editedValues, phone_number: e.target.value })}
                                 />
                                 {error && <p className="text-red-500 text-sm">{error}</p>}
+                                {errors.phone_number && <p style={{ color: "red", fontSize: "12px" }}>{errors.phone_number}</p>}
                               </>
+
                             ) : (
                               <>
                                 <div className="text-sm text-gray-900">{user.email}</div>
@@ -618,32 +664,58 @@ const Dashboard = () => {
                             <>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {editingUser === user.id ? (
-                                  <input
-                                    type="text"
-                                    className="text-xs text-gray-900 border border-gray-300 rounded-md px-2 py-1"
-                                    value={editedValues.specialization}
-                                    onChange={(e) => setEditedValues({ ...editedValues, specialization: e.target.value })}
-                                  />
+                                  <>
+                                    <input
+                                      type="text"
+                                      className="text-xs text-gray-900 border border-gray-300 rounded-md px-2 py-1"
+                                      value={editedValues.specialization}
+                                      onChange={(e) => setEditedValues({ ...editedValues, specialization: e.target.value })}
+                                    />
+                                    {errors.specialization && <p className="text-red-500 text-xs mt-1">{errors.specialization}</p>}
+                                  </>
                                 ) : (
                                   <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
                                     {user.trainer_profile ? user.trainer_profile.specialization : "N/A"}
                                   </span>
                                 )}
                               </td>
+
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {editingUser === user.id ? (
-                                  <input
-                                    type="text"
-                                    className="text-xs text-gray-900 border border-gray-300 rounded-md px-2 py-1"
-                                    value={editedValues.experience}
-                                    onChange={(e) => setEditedValues({ ...editedValues, experience: e.target.value })}
-                                  />
+                                  <>
+                                    <input
+                                      type="text"
+                                      className="text-xs text-gray-900 border border-gray-300 rounded-md px-2 py-1"
+                                      value={editedValues.experience}
+                                      onChange={(e) => setEditedValues({ ...editedValues, experience: e.target.value })}
+                                    />
+                                    {errors.experience && <p className="text-red-500 text-xs mt-1">{errors.experience}</p>}
+                                  </>
                                 ) : (
                                   <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
                                     {user.trainer_profile ? user.trainer_profile.experience : "N/A"}
                                   </span>
                                 )}
                               </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {editingUser === user.id ? (
+                                  <>
+                                    <input
+                                      type="text"
+                                      className="text-xs text-gray-900 border border-gray-300 rounded-md px-2 py-1"
+                                      value={editedValues.salary}
+                                      onChange={(e) => setEditedValues({ ...editedValues, salary: e.target.value })}
+                                    />
+                                    {errors.salary && <p className="text-red-500 text-xs mt-1">{errors.salary}</p>}
+                                  </>
+                                ) : (
+                                  <span className="px-2 py-1 text-xs rounded-md bg-gray-100 text-gray-800">
+                                    {user.trainer_profile ? user.trainer_profile.salary : "N/A"}
+                                  </span>
+                                )}
+                              </td>
+
                               <td className="px-6 py-4 whitespace-nowrap">
                                 {editingUser === user.id ? (
                                   <select
