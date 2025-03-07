@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { User, Plus, ArrowLeft, Mail, Loader, AlertCircle, Send, CheckCircle } from "lucide-react";
+import { User, Plus, ArrowLeft, Mail, Loader, AlertCircle, Send } from "lucide-react";
 import api from "../../../api/axios";
 import AdminSidebar from "../sidebar";
 import Navbar from "../navbar";
@@ -18,6 +18,17 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const AddMember = () => {
   const router = useRouter();
@@ -35,7 +46,7 @@ const AddMember = () => {
   const [plans, setPlans] = useState([]);
   const [fetchingPlans, setFetchingPlans] = useState(true);
   const [authError, setAuthError] = useState("");
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false); // State for success dialog visibility
+  const [showPopup, setShowPopup] = useState(false); // State for popup visibility
 
   // OTP-related states
   const [otp, setOtp] = useState("");
@@ -49,7 +60,6 @@ const AddMember = () => {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
-  const [createdUserName, setCreatedUserName] = useState(""); // To store the name of the created user
 
   // Fetch subscription plans from API with authentication
   useEffect(() => {
@@ -122,13 +132,13 @@ const AddMember = () => {
     setError("");
     setSuccessMessage("");
     setFieldErrors({}); // Clear previous field-specific errors
-  
+
     if (!otpVerified) {
       setError("Please verify your email with OTP.");
       setLoading(false);
       return;
     }
-  
+
     // Check if the selected plan ID exists
     const selectedPlan = plans.find((plan) => plan.id === formData.subscription_plan_id);
     if (!selectedPlan) {
@@ -136,35 +146,34 @@ const AddMember = () => {
       setLoading(false);
       return;
     }
-  
+
     // Ensure gender is set
     if (!formData.gender) {
       setError("Please select a gender.");
       setLoading(false);
       return;
     }
-  
+
     // Format the phone number to E.164 format
     const formattedPhoneNumber = `+91${formData.phone_number}`;
-  
+
     try {
       const response = await api.post("register/", {
         ...formData,
         phone_number: formattedPhoneNumber, // Use the formatted phone number
         user_type: "user",
       });
-  
+
       if (response.data.success) {
         setSuccessMessage("Member added successfully! Login credentials sent to their email.");
-        setCreatedUserName(formData.name); // Store the name for the success dialog
-        setShowSuccessDialog(true); // Show the success dialog
+        setShowPopup(true); // Show the popup
       } else {
         setError(response.data.message || "Failed to add member.");
       }
     } catch (err) {
       if (err.response && err.response.data) {
         const { error } = err.response.data;
-  
+
         // Handle specific errors and assign them to respective fields
         if (error.includes("Email already exists")) {
           setFieldErrors((prev) => ({ ...prev, email: "Email already exists" }));
@@ -181,7 +190,7 @@ const AddMember = () => {
       setLoading(false);
     }
   };
-  
+
   const handleLogin = () => {
     router.push("/login");
   };
@@ -196,15 +205,15 @@ const AddMember = () => {
       setFieldErrors((prev) => ({ ...prev, email: "Please enter an email address first." }));
       return;
     }
-  
+
     setSendingOtp(true);
     setOtpButtonText("Sending...");
     setFieldErrors({}); // Clear previous field-specific errors
-  
+
     try {
       const response = await api.post("send-otp/", { email: formData.email });
       console.log("OTP Response:", response.data);
-  
+
       if (
         response.data &&
         (response.data.success ||
@@ -213,7 +222,7 @@ const AddMember = () => {
         setOtpSent(true);
         setCountdown(45); // Start the countdown
         setOtpButtonText("Resend OTP");
-  
+
         // Force state update and then open dialog
         setTimeout(() => {
           setIsOtpDialogOpen(true);
@@ -224,7 +233,7 @@ const AddMember = () => {
       }
     } catch (err) {
       console.log("OTP Error:", err);
-  
+
       if (err.response && err.response.data && err.response.data.error) {
         if (err.response.data.error.includes("Email already exists")) {
           setFieldErrors((prev) => ({ ...prev, email: "Email already exists." }));
@@ -234,13 +243,13 @@ const AddMember = () => {
       } else {
         setFieldErrors((prev) => ({ ...prev, email: "An error occurred while sending OTP." }));
       }
-  
+
       setOtpButtonText("Get OTP");
     } finally {
       setSendingOtp(false);
     }
   };
-  
+
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 6) {
       setOtpError("Please enter a valid 6-digit OTP.");
@@ -394,6 +403,8 @@ const AddMember = () => {
                         className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         required
                       />
+                      {fieldErrors.email && <p className="text-red-500">{fieldErrors.email}</p>}
+
                       <Button
                         type="button"
                         onClick={handleGetOtp}
@@ -412,9 +423,6 @@ const AddMember = () => {
                         )}
                       </Button>
                     </div>
-                    {fieldErrors.email && (
-                      <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>
-                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
@@ -434,10 +442,8 @@ const AddMember = () => {
                           e.target.value = e.target.value.replace(/[^0-9]/g, "");
                         }}
                       />
+                      {fieldErrors.phone_number && <p className="text-red-500">{fieldErrors.phone_number}</p>}
                     </div>
-                    {fieldErrors.phone_number && (
-                      <p className="text-red-500 text-sm mt-1">{fieldErrors.phone_number}</p>
-                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
@@ -590,29 +596,20 @@ const AddMember = () => {
         </div>
       )}
 
-      {/* Improved Success Dialog */}
-      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md bg-white">
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="h-10 w-10 text-green-500" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Success!</h2>
-            <p className="text-lg text-gray-700 mb-1">
-              <span className="font-medium text-green-600">{createdUserName}</span> has been registered successfully
-            </p>
-            <p className="text-sm text-gray-500 mb-6">
-              Login credentials have been sent to their email
-            </p>
-            <Button
-              onClick={handleRedirect}
-              className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-lg transition-all duration-300"
-            >
-              Go to Dashboard
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* AlertDialog for Success Message */}
+      <AlertDialog open={showPopup} onOpenChange={setShowPopup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>User Created Successfully!</AlertDialogTitle>
+            <AlertDialogDescription>
+              The member has been added successfully. Login credentials have been sent to their email.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={handleRedirect}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

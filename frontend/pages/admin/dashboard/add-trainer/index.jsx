@@ -48,6 +48,8 @@ const AddTrainer = () => {
   const [otpButtonColor, setOtpButtonColor] = useState("bg-[#ea580c]");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [showSuccessButton, setShowSuccessButton] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,9 +66,11 @@ const AddTrainer = () => {
     setLoading(true);
     setError("");
     setSuccessMessage("");
+    setFieldErrors({}); // Clear previous field errors
+    setShowSuccessButton(false); // Hide button initially
 
     if (!otpVerified) {
-      setError("Please verify your email with OTP.");
+      setFieldErrors((prev) => ({ ...prev, otp: "Please verify your email with OTP." }));
       setLoading(false);
       return;
     }
@@ -77,20 +81,30 @@ const AddTrainer = () => {
     try {
       const response = await api.post("register/", {
         ...formData,
-        phone_number: formattedPhoneNumber, // Use the formatted phone number
+        phone_number: formattedPhoneNumber,
         user_type: "trainer",
       });
 
       if (response.data.success) {
         setSuccessMessage("Trainer added successfully! Login credentials sent to their email.");
-        setTimeout(() => {
-          router.push("/trainers");
-        }, 3000);
+        setShowSuccessButton(true); // Show the button
       } else {
         setError(response.data.message || "Failed to add trainer.");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "An error occurred.");
+      console.log("Registration error:", err);
+
+      if (err.response?.data?.error) {
+        // Handle specific errors
+        if (err.response.data.error.includes("Email already exists")) {
+          setFieldErrors((prev) => ({ ...prev, email: "Email already exists." }));
+        }
+        if (err.response.data.error.includes("Phone number already exists")) {
+          setFieldErrors((prev) => ({ ...prev, phone_number: "Phone number already exists." }));
+        }
+      } else {
+        setError("An error occurred.");
+      }
     } finally {
       setLoading(false);
     }
@@ -99,12 +113,13 @@ const AddTrainer = () => {
   // OTP Functions (API-based)
   const handleGetOtp = async () => {
     if (!formData.email) {
-      setOtpError("Please enter an email address first.");
+      setFieldErrors((prev) => ({ ...prev, email: "Please enter an email address first." }));
       return;
     }
 
     setSendingOtp(true);
     setOtpButtonText("Sending...");
+    setFieldErrors({}); // Clear previous field-specific errors
 
     try {
       const response = await api.post("send-otp/", { email: formData.email });
@@ -116,7 +131,6 @@ const AddTrainer = () => {
           response.data.message === "OTP sent. Verify OTP to complete registration.")
       ) {
         setOtpSent(true);
-        setOtpError("");
         setCountdown(45); // Start the countdown
         setOtpButtonText("Resend OTP");
 
@@ -125,12 +139,22 @@ const AddTrainer = () => {
           setIsOtpDialogOpen(true);
         }, 100);
       } else {
-        setOtpError("Failed to send OTP. Please try again.");
+        setFieldErrors((prev) => ({ ...prev, email: "Failed to send OTP. Please try again." }));
         setOtpButtonText("Get OTP");
       }
     } catch (err) {
-      console.error("OTP Error:", err);
-      setOtpError("An error occurred while sending OTP.");
+      console.log("OTP Error:", err);
+
+      if (err.response && err.response.data && err.response.data.error) {
+        if (err.response.data.error.includes("Email already exists")) {
+          setFieldErrors((prev) => ({ ...prev, email: "Email already exists." }));
+        } else {
+          setFieldErrors((prev) => ({ ...prev, email: err.response.data.error }));
+        }
+      } else {
+        setFieldErrors((prev) => ({ ...prev, email: "An error occurred while sending OTP." }));
+      }
+
       setOtpButtonText("Get OTP");
     } finally {
       setSendingOtp(false);
@@ -255,12 +279,12 @@ const AddTrainer = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-md p-2"
                       required
                     />
+                    {fieldErrors.email && <p className="text-red-500">{fieldErrors.email}</p>}
                     <Button
                       type="button"
                       onClick={handleGetOtp}
-                      className={`px-4 py-2 ${otpButtonColor} text-white rounded-md hover:${
-                        otpVerified ? "bg-green-600" : "bg-[#d94a0a]"
-                      } transition-colors flex items-center`}
+                      className={`px-4 py-2 ${otpButtonColor} text-white rounded-md hover:${otpVerified ? "bg-green-600" : "bg-[#d94a0a]"
+                        } transition-colors flex items-center`}
                       disabled={otpVerified || sendingOtp}
                     >
                       {sendingOtp ? (
@@ -292,6 +316,7 @@ const AddTrainer = () => {
                         e.target.value = e.target.value.replace(/[^0-9]/g, "");
                       }}
                     />
+                    {fieldErrors.phone_number && <p className="text-red-500">{fieldErrors.phone_number}</p>}
                   </div>
                 </div>
                 <div>
@@ -324,33 +349,30 @@ const AddTrainer = () => {
                     <button
                       type="button"
                       onClick={() => handleAvailabilityChange("morning")}
-                      className={`px-4 py-2 rounded-md ${
-                        formData.availability === "morning"
+                      className={`px-4 py-2 rounded-md ${formData.availability === "morning"
                           ? "bg-orange-500 text-white"
                           : "bg-gray-200 text-gray-700"
-                      }`}
+                        }`}
                     >
                       Morning
                     </button>
                     <button
                       type="button"
                       onClick={() => handleAvailabilityChange("evening")}
-                      className={`px-4 py-2 rounded-md ${
-                        formData.availability === "evening"
+                      className={`px-4 py-2 rounded-md ${formData.availability === "evening"
                           ? "bg-orange-500 text-white"
                           : "bg-gray-200 text-gray-700"
-                      }`}
+                        }`}
                     >
                       Evening
                     </button>
                     <button
                       type="button"
                       onClick={() => handleAvailabilityChange("both")}
-                      className={`px-4 py-2 rounded-md ${
-                        formData.availability === "both"
+                      className={`px-4 py-2 rounded-md ${formData.availability === "both"
                           ? "bg-orange-500 text-white"
                           : "bg-gray-200 text-gray-700"
-                      }`}
+                        }`}
                     >
                       Both
                     </button>
@@ -414,14 +436,24 @@ const AddTrainer = () => {
                 <button
                   type="submit"
                   disabled={loading || !otpVerified}
-                  className={`flex items-center px-4 py-2 ${
-                    !otpVerified ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600"
-                  } text-white rounded-md`}
+                  className={`flex items-center px-4 py-2 ${!otpVerified ? "bg-gray-400 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600"
+                    } text-white rounded-md`}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {loading ? "Adding..." : "Add Trainer"}
                 </button>
               </div>
+
+              {showSuccessButton && (
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={() => router.push("/admin/dashboard")}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+                  >
+                    Go to Dashboard
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </main>
