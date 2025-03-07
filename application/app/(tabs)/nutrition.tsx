@@ -3,7 +3,8 @@ import { Text, View, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import MealSection from '../../components/neutrition/MealSection';
 import MetricsModal from '../../components/neutrition/MetricsModal';
 import FoodSearchModal from '../../components/neutrition/FoodSearchModal';
-import { FoodItem,dummyFoods } from '@/components/neutrition/foodItems';
+import { FoodItem, dummyFoods } from '@/components/neutrition/foodItems';
+
 export default function Nutrition() {
   const [userMetrics, setUserMetrics] = useState({
     height: '',
@@ -21,15 +22,8 @@ export default function Nutrition() {
   });
 
   const [setupComplete, setSetupComplete] = useState(false);
-
-  // type FoodItem = {
-  //   id: string;
-  //   name: string;
-  //   calories: number;
-  //   protein: number;
-  //   carbs: number;
-  //   fats: number;
-  // };
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showDateSelector, setShowDateSelector] = useState(false);
 
   const [meals, setMeals] = useState<{
     breakfast: FoodItem[];
@@ -52,18 +46,6 @@ export default function Nutrition() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FoodItem[]>([]);
-  // const dummyFoods = [
-  //   { id: '1', name: 'Oatmeal', calories: 150, protein: 6, carbs: 27, fats: 2.5 },
-  //   { id: '2', name: 'Scrambled Eggs', calories: 140, protein: 12, carbs: 1, fats: 10 },
-  //   { id: '3', name: 'Whole Wheat Toast', calories: 80, protein: 3, carbs: 15, fats: 1 },
-  //   { id: '4', name: 'Banana', calories: 105, protein: 1.3, carbs: 27, fats: 0.4 },
-  //   { id: '5', name: 'Greek Yogurt', calories: 100, protein: 17, carbs: 6, fats: 0.5 },
-  //   { id: '6', name: 'Chicken Breast', calories: 165, protein: 31, carbs: 0, fats: 3.6 },
-  //   { id: '7', name: 'Brown Rice', calories: 215, protein: 5, carbs: 45, fats: 1.8 },
-  //   { id: '8', name: 'Salmon', calories: 206, protein: 22, carbs: 0, fats: 13 },
-  //   { id: '9', name: 'Avocado', calories: 240, protein: 3, carbs: 12, fats: 22 },
-  //   { id: '10', name: 'Apple', calories: 95, protein: 0.5, carbs: 25, fats: 0.3 },
-  // ];
 
   const [dailyTotals, setDailyTotals] = useState({
     calories: 0,
@@ -71,6 +53,77 @@ export default function Nutrition() {
     carbs: 0,
     fats: 0
   });
+
+  // Function to load data for a specific date
+  const loadDateData = (date: Date) => {
+    const today = new Date();
+    if (date > today) {
+      // If the selected date is in the future, do not update the current date
+      return;
+    }
+    setCurrentDate(date);
+    // Reset meals or load meals for the selected date from your data source
+    setMeals({
+      breakfast: [],
+      morningSnack: [],
+      lunch: [],
+      eveningSnack: [],
+      dinner: []
+    });
+  };
+
+  // Navigate to previous week
+  const goToPreviousWeek = () => {
+    const prevWeek = new Date(currentDate);
+    prevWeek.setDate(prevWeek.getDate() - 7);
+    loadDateData(prevWeek);
+  };
+
+  // Navigate to next week
+  const goToNextWeek = () => {
+    const nextWeek = new Date(currentDate);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    loadDateData(nextWeek);
+  };
+
+  // Set to today
+  const goToToday = () => {
+    loadDateData(new Date());
+    setShowDateSelector(false);
+  };
+
+  // Toggle date selector
+  const toggleDateSelector = () => {
+    setShowDateSelector(!showDateSelector);
+  };
+
+  // Check if a date is today
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+
+  // Get the current week's dates
+  const getWeekDates = () => {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(date.getDate() + i);
+      if (date <= new Date()) {
+        weekDates.push(date);
+      }
+    }
+    return weekDates;
+  };
+
+  // Format the date for display
+  const getFormattedDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+  };
 
   useEffect(() => {
     let calories = 0, protein = 0, carbs = 0, fats = 0;
@@ -157,18 +210,17 @@ export default function Nutrition() {
     setFoodSearchModalVisible(true);
   };
 
-  const today = new Date();
-  const formattedDate = today.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.dateText}>{formattedDate}</Text>
+        <TouchableOpacity
+          style={styles.dateDisplay}
+          onPress={toggleDateSelector}
+        >
+          <Text style={styles.dateText}>{getFormattedDate(currentDate)}</Text>
+          <Text style={styles.dateDropdownIndicator}>▼</Text>
+        </TouchableOpacity>
+
         {setupComplete ? (
           <TouchableOpacity
             style={styles.editMetricsButton}
@@ -185,6 +237,51 @@ export default function Nutrition() {
           </TouchableOpacity>
         )}
       </View>
+
+      {showDateSelector && (
+        <View style={styles.dateSelector}>
+          <View style={styles.weekNavigator}>
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={goToPreviousWeek}
+            >
+              <Text style={styles.navButtonText}>◀</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.weekTitle}>
+              {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.navButton}
+              onPress={goToNextWeek}
+            >
+              <Text style={styles.navButtonText}>▶</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.weekView}>
+            {getWeekDates().map((date, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.dayButton,
+                  isToday(date) && styles.dayButtonToday
+                ]}
+                onPress={() => loadDateData(date)}
+              >
+                <Text style={styles.dayAbbreviation}>
+                  {date.toLocaleDateString('en-US', { weekday: 'narrow' })}
+                </Text>
+                <Text style={styles.dayNumber}>
+                  {date.getDate()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       {setupComplete && (
         <View style={styles.nutritionSummary}>
           <View style={styles.nutritionItem}>
@@ -218,6 +315,7 @@ export default function Nutrition() {
           </View>
         </View>
       )}
+
       <ScrollView style={styles.mealsContainer}>
         <MealSection
           title="Breakfast"
@@ -245,6 +343,7 @@ export default function Nutrition() {
           onAddFood={() => openFoodSearch('dinner')}
         />
       </ScrollView>
+
       <MetricsModal
         visible={metricsModalVisible}
         onClose={() => setMetricsModalVisible(false)}
@@ -252,6 +351,7 @@ export default function Nutrition() {
         setUserMetrics={setUserMetrics}
         onSave={calculateNutritionTargets}
       />
+
       <FoodSearchModal
         visible={foodSearchModalVisible}
         onClose={() => {
@@ -283,8 +383,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  dateDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
   dateText: {
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginRight: 5,
+  },
+  dateDropdownIndicator: {
+    fontSize: 12,
+    color: '#7f8c8d',
+  },
+  dateSelector: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  weekNavigator: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  navButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  navButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
+  },
+  weekTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  weekView: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayButton: {
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 12,
+  },
+  dayButtonToday: {
+    backgroundColor: '#3498db',
+  },
+  dayAbbreviation: {
+    fontSize: 14,
+    color: '#7f8c8d',
+  },
+  dayNumber: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2c3e50',
   },
