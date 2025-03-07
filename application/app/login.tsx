@@ -3,10 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, Image, Alert, Modal, StyleShee
 import { Redirect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons"; // For icons
 import axios from "axios";
-// import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from 'expo-constants';
 import api from '../api/axios';
+
 const API_URL = Constants.expoConfig?.extra?.API_URL;
 
 export default function LoginPage() {
@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  // console.log('url',API_URL);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -100,13 +100,18 @@ export default function LoginPage() {
                 <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
               </TouchableOpacity>
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <MaterialIcons name={showPassword ? "visibility" : "visibility-off"} size={24} color="#ccc" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Login Button */}
@@ -216,6 +221,7 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 8,
     paddingHorizontal: 12,
+    width: "100%", // Ensure the input field takes the full width of the container
   },
   passwordHeader: {
     flexDirection: "row",
@@ -227,6 +233,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#f97316",
     textDecorationLine: "underline",
+  },
+  passwordInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative", // Ensure the eye icon is positioned correctly
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 12,
   },
   loginButton: {
     width: "100%",

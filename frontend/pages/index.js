@@ -1,12 +1,12 @@
-import Navbar from "@/components/Navbar";
-import Hero from "@/components/Hero";
-import StatsSection from "@/components/StatsSection";
-import Marquee from "@/components/Marquee";
-import Specialities from "@/components/specialities";
-import OurWebApplication from "@/components/WebApp";
-import PricingSection from "@/components/PricingSection";
-import Testimonials from "@/components/Testimonials";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/website/Navbar";
+import Hero from "@/components/website/Hero";
+import StatsSection from "@/components/website/StatsSection";
+import Marquee from "@/components/website/Marquee";
+import Specialities from "@/components/website/specialities";
+import OurWebApplication from "@/components/website/WebApp";
+import PricingSection from "@/components/website/PricingSection";
+import Testimonials from "@/components/website/Testimonials";
+import Footer from "@/components/website/Footer";
 
 export default function Home() {
   return (
