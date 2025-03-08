@@ -372,3 +372,4 @@ class NutritionGoal(models.Model):
     evening_snack = models.JSONField(default=list)
     dinner = models.JSONField(default=list)
     created_at = models.DateField(auto_now_add=True)
+

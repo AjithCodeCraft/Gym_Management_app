@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import add_subscription, delete_all, delete_subscription, list_subscriptions, list_trainers, list_users, \
     list_users_and_trainers, login_user, register_user, send_otp, send_password_reset_email, update_subscription, \
-    update_trainer_details, update_user_details, verify_otp, NutritionGoalView
+    update_trainer_details, update_user_details, verify_otp, NutritionGoalView,get_user_profile,home_chat
 
 urlpatterns = [
     path('send-otp/', send_otp, name='send-otp'), 
@@ -21,4 +21,6 @@ urlpatterns = [
     path('update_user_details/', update_user_details, name='update_subscription'),
     path('update-trainer-details/', update_trainer_details, name='update_trainer_details'),
     path('nutrition-goals/', NutritionGoalView.as_view(), name="nutrition_goal"),
+    path('user/profile/', get_user_profile, name='user_profile'),
+    path('homechat/', home_chat, name='home_chat'),
 ]

@@ -7,6 +7,7 @@ import OurWebApplication from "@/components/website/WebApp";
 import PricingSection from "@/components/website/PricingSection";
 import Testimonials from "@/components/website/Testimonials";
 import Footer from "@/components/website/Footer";
+import Chatbot from "@/components/website/Chatbot";
 
 export default function Home() {
   return (
@@ -21,6 +22,7 @@ export default function Home() {
       <PricingSection />
       <Testimonials />
       <Footer />
+      <Chatbot/>
     </div>
   );
 }
