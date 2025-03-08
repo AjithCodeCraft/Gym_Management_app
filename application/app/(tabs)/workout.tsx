@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // import AIWorkoutChatbot from './AIWorkoutChatbot';
-import WorkoutItem from '@/components/gym/WorkoutItem';
-import AIWorkoutChatbot from '@/components/gym/AIWorkoutChatbot';
+import WorkoutItem from '@/components/workout/WorkoutItem';
+import AIWorkoutChatbot from '@/components/workout/AIWorkoutChatbot';
 
 export default function Gym() {
   interface Workout {
