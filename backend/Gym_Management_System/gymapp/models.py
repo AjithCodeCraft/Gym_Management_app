@@ -346,6 +346,11 @@ class NutritionGoal(models.Model):
         ("active", "Active"),
         ("very_active", "Very Active")
     ]
+    
+    SEX_CHOICES = [
+        ("male", "Male"),
+        ("female", "Female")
+    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="nutrition_goal")
@@ -363,6 +368,7 @@ class NutritionGoal(models.Model):
         MaxValueValidator(1000)
     ], blank=False, null=False)
     age = models.IntegerField(default=16, blank=False, null=False)
+    sex = models.CharField(default="male", max_length=6, choices=SEX_CHOICES)
     activity_level = models.CharField(max_length=15, choices=ACTIVITY_LEVEL_CHOICES, default="sedentary",
                                       verbose_name="Activity Level"
     )

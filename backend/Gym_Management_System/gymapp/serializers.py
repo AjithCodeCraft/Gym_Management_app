@@ -67,7 +67,7 @@ class LightweightUserSerializer(serializers.ModelSerializer):
 class NutritionGoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = NutritionGoal
-        fields = ['user', 'height', 'weight', 'age', 'activity_level', 'breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']
+        fields = ['user', 'height', 'weight', 'age', 'sex', 'activity_level', 'breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']
         extra_args = {
             'user': {'required': False}
         }

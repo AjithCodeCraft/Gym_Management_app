@@ -661,13 +661,13 @@ class NutritionGoalView(APIView):
         try:
             goals = NutritionGoal.objects.get(user=request.user)
             serializer = NutritionGoalSerializer(goals)
-            return Response(serializer, status=status.HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except NutritionGoal.DoesNotExist:
             return Response({'error': 'No nutrition goal found for current user'}, status=status.HTTP_404_NOT_FOUND)
 
     # Will handle both Create and Update
     def put(self, request):
-        if not request.is_authenticated:
+        if not request.user.is_authenticated:
             return Response({"message": "You are not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
 
         serializer = NutritionGoalSerializer(data=request.data, partial=True)

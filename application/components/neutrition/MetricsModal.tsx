@@ -141,9 +141,9 @@ const MetricsModal: React.FC<MetricsModalProps> = ({ visible, onClose, userMetri
               <TouchableOpacity
                 style={[
                   styles.pickerButton,
-                  userMetrics.activityLevel === 'veryActive' && styles.pickerButtonSelected
+                  userMetrics.activityLevel === 'very_active' && styles.pickerButtonSelected
                 ]}
-                onPress={() => setUserMetrics({...userMetrics, activityLevel: 'veryActive'})}
+                onPress={() => setUserMetrics({...userMetrics, activityLevel: 'very_active'})}
               >
                 <Text style={styles.pickerButtonText}>Very Active</Text>
               </TouchableOpacity>
