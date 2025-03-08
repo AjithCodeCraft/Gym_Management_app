@@ -126,7 +126,7 @@ export default function Nutrition() {
             case "active":
                 activityMultiplier = 1.725;
                 break;
-            case "veryActive":
+            case "very_active":
                 activityMultiplier = 1.9;
                 break;
             default:
