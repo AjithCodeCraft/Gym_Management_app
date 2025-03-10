@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subscription, User, UserSubscription, NutritionGoal
+from .models import Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics
 
 
 
@@ -67,7 +67,21 @@ class LightweightUserSerializer(serializers.ModelSerializer):
 class NutritionGoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = NutritionGoal
-        fields = ['user', 'height', 'weight', 'age', 'activity_level', 'breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']
+        fields = ['user', 'height', 'weight', 'age', 'sex', 'activity_level', 'breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']
         extra_args = {
             'user': {'required': False}
         }
+
+
+class DefaultUserMetricsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DefaultUserMetrics
+        fields = ['user', 'height', 'weight', 'age', 'sex', 'activity_level']
+        extra_args = {
+            'user': {'required': False}
+        }
+        
+    def to_internal_value(self, data):
+        allowed_fields = set(self.fields.keys())
+        filtered_data = {key: value for key, value in data.items() if key in allowed_fields}
+        return super().to_internal_value(filtered_data)
