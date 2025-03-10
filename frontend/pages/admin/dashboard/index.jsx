@@ -509,10 +509,10 @@ const Dashboard = () => {
                   <div className="p-5">
                     <div className="flex items-center">
                       <div className="p-3 rounded-full bg-purple-100 text-purple-500">
-                        <DollarSign className="h-6 w-6" />
+                      <Activity className="h-6 w-6" />
                       </div>
                       <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-500">Total Revenue</p>
+                        <p className="text-sm font-medium text-gray-500">Active Trainers</p>
                         <h3 className="text-2xl font-bold text-gray-900">₹{stats.totalRevenue.toFixed(2)}</h3>
                       </div>
                     </div>

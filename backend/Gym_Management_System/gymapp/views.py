@@ -15,7 +15,12 @@ import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
-from datetime import datetime
+from datetime import datetime    
+import json
+import os
+from django.http import JsonResponse
+from gradio_client import Client
+
 
 
 # Create your views here.
@@ -687,3 +692,106 @@ class NutritionGoalView(APIView):
             return Response(NutritionGoalSerializer(goal).data, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+
+@api_view(['GET'])
+def get_user_profile(request):
+    # Ensure the user is authenticated
+    if not request.user.is_authenticated:
+        return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Use the authenticated user's ID
+    user_id = request.user.id
+
+    try:
+        user = User.objects.get(id=user_id)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+    
+
+
+
+
+# Get the directory of the current file (views.py)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the path to responses.json
+json_file_path = os.path.join(current_dir, "data", "responses.json")
+
+# Load the JSON dataset
+gym_responses = {}
+try:
+    with open(json_file_path, "r") as file:
+        gym_responses = json.load(file)
+except FileNotFoundError:
+    print(f"Error: The file {json_file_path} does not exist.")
+except json.JSONDecodeError:
+    print(f"Error: The file {json_file_path} is not a valid JSON file.")
+
+# Initialize the Gradio client
+client = Client("alameenas/gym_assastant")
+
+@api_view(["POST"])
+def home_chat(request):
+    try:
+        # Get user input from request
+        req_message = request.data.get("message")
+
+        # Validate input
+        if not req_message:
+            return JsonResponse({"error": "Message is required"}, status=400)
+
+        # Ensure JSON responses are loaded properly
+        if not gym_responses:
+            return JsonResponse({"error": "Response data is not available"}, status=500)
+
+        # Check if the message exists in the JSON dataset
+        if req_message in gym_responses:
+            matched_response = {"response": gym_responses[req_message]}
+
+            # Debugging: Print the matched response
+            print("Matched Response from JSON:", json.dumps(matched_response, indent=4))
+
+            return JsonResponse(matched_response)
+
+        # If no match found in JSON, use the AI model
+        system_instruction = (
+            "You are a friendly and helpful gym assistant. Your goal is to provide information about the gym, "
+            "Only give short answers to the user based on the questions."
+            "including timings, membership plans, trainers, facilities, and equipment. Be conversational and human-like in your responses.\n"
+            "Do not generate workout plans or ask for user-specific details like weight, height, or age. "
+            "Focus solely on answering questions about the gym . and you are an indian agent and the gym name is fortifit and you have to represent money in Rupees and the main thing is there are lost of plans /n"
+           " plans: the Basic plan, starting at ₹999 per month, includes access to the gym floor, locker facilities, and cardio & strength training; the Pro plan, starting at ₹1999 per month, adds personalized workout plans, group training sessions, and priority locker access; and the Elite plan, starting at ₹2999 per month, includes all Pro plan benefits plus 1-on-1 personal training, diet consultations, and unlimited guest passes. /n",
+            "You can also provide information about the trainers, including their specialization, experience, qualifications, availability."
+            "If the user asks about the gym's timings, you can mention that the gym is open from 6 AM to 10 PM on weekdays and 8 AM to 8 PM on weekends. /n"
+            
+        )
+
+        # Call the AI model
+        result = client.predict(
+            req_message,          # User input (e.g., "What are your timings?")
+            system_instruction,   # Personalized AI instruction
+            2048,                # max_tokens
+            0.7,                 # temperature
+            0.95,                # top_p
+            api_name="/chat"
+        )
+
+        # Debugging: Print raw AI response
+        # print("Raw AI Response:", result)
+
+        # Ensure result is JSON formatted
+        if isinstance(result, str):
+            try:
+                result = json.loads(result)  # Convert AI response to JSON
+            except json.JSONDecodeError as e:
+                result = {"response": result}  # Wrap the AI response in a JSON object
+
+        return JsonResponse(result)
+
+    except Exception as e:
+        return JsonResponse({"error": "Internal server error", "details": str(e)}, status=500)

@@ -53,31 +53,19 @@ const AdminSidebar = () => {
               {/* Adding a gap between Dashboard and Members */}
               <div className="my-4 border-t border-gray-200 w-full"></div>
 
-              <Link href="/admin/dashboard/members" className="w-full">
-                <button
-                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/admin/members')
-                      ? 'bg-orange-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <User className="mr-3 h-5 w-5" />
-                  Members
-                </button>
-              </Link>
+       <Link href="/admin/dashboard/members" className="w-full">
+              <button
+                className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
+                  isActive('/admin/dashboard/members')
+                    ? 'bg-orange-500 text-white'// Change background to gray and text to orange
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <User className="mr-3 h-5 w-5" />
+                Members
+              </button>
+            </Link>
 
-              <Link href="/admin/trainers" className="w-full">
-                <button
-                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/admin/trainers')
-                      ? 'bg-orange-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Users className="mr-3 h-5 w-5" />
-                  Trainers
-                </button>
-              </Link>
 
               <Link href="/admin/dashboard/addplan" className="w-full">
                 <button
