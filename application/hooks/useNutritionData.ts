@@ -8,6 +8,7 @@ interface useNutritionPropType {
     setLoading: Dispatch<SetStateAction<boolean>>;
     setUserMetrics: Dispatch<SetStateAction<userMetricsType>>;
     setMeals: Dispatch<SetStateAction<mealsType>>;
+    currentDate: Date;
 }
 
 const filterFood = (foodItems: string[]): FoodItem[] => {
@@ -18,14 +19,14 @@ const filterFood = (foodItems: string[]): FoodItem[] => {
     });
     return resultFoodItems;
 }
-const useNutritionData = ({ setLoading, setUserMetrics, setMeals }: useNutritionPropType): void => {
+const useNutritionData = ({ setLoading, setUserMetrics, setMeals, currentDate }: useNutritionPropType): void => {
     useEffect(() => {
         let isMounted = true;
         const fetchData = async () => {
+            const date = currentDate.toLocaleDateString('en-ca');
             try {
                 if (isMounted) {
-                    const response = await apiAuth.get('nutrition-goals');
-                    console.log(response.data);
+                    const response = await apiAuth.get(`nutrition-goals/${date}/`);
                     const convertedUserMetricsData: userMetricsType = {
                         height: `${response.data.height}`,
                         weight: `${response.data.weight}`,
@@ -40,7 +41,6 @@ const useNutritionData = ({ setLoading, setUserMetrics, setMeals }: useNutrition
                         eveningSnack: filterFood(response.data.evening_snack),
                         dinner: filterFood(response.data.dinner)
                     };
-                    console.log(convertedMealsData);
                     setUserMetrics(convertedUserMetricsData);
                     setMeals(convertedMealsData);
                 }
@@ -55,13 +55,13 @@ const useNutritionData = ({ setLoading, setUserMetrics, setMeals }: useNutrition
                 setLoading(false);
             }
         }
-
+        setLoading(true);
         fetchData();
 
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [currentDate]);
 };
 
 export default useNutritionData;

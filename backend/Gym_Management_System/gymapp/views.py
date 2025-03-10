@@ -3,7 +3,7 @@ from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from rest_framework.views import APIView
 
-from .models import OTPVerification, Payment, Subscription, TrainerProfile, User, UserSubscription, NutritionGoal
+from .models import OTPVerification, Payment, Subscription, TrainerProfile, User, UserSubscription, NutritionGoal, DefaultUserMetrics
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
@@ -14,7 +14,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer
+from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
+from datetime import datetime
 
 
 # Create your views here.
@@ -655,25 +656,34 @@ def update_trainer_details(request):
 
 class NutritionGoalView(APIView):
 
-    def get(self, request):
+    def get(self, request, date_str):
         if not request.user.is_authenticated:
             return Response({"message": "You are not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
-        try:
-            goals = NutritionGoal.objects.get(user=request.user)
-            serializer = NutritionGoalSerializer(goals)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except NutritionGoal.DoesNotExist:
-            return Response({'error': 'No nutrition goal found for current user'}, status=status.HTTP_404_NOT_FOUND)
+        
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        
+        goals = NutritionGoal.objects.filter(user=request.user, created_at=date).first()
+        data = NutritionGoalSerializer(goals).data
+        if not goals:
+            goals = NutritionGoal.objects.filter(user=request.user).order_by('-created_at').first()
+            if goals:
+                data = dict(NutritionGoalSerializer(goals).data)
+                for item in ['breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']:
+                    data[item] = []
+        return Response(data, status=status.HTTP_200_OK)
+        return Response({'error': 'No nutrition goal found for current user'}, status=status.HTTP_404_NOT_FOUND)
 
     # Will handle both Create and Update
-    def put(self, request):
+    def put(self, request, date_str):
         if not request.user.is_authenticated:
             return Response({"message": "You are not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
-
+        
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        
         serializer = NutritionGoalSerializer(data=request.data, partial=True)
         if serializer.is_valid():
             validated_data = serializer.validated_data
-
-            goal, created = NutritionGoal.objects.update_or_create(user=request.user, defaults=validated_data)
+            goal, created = NutritionGoal.objects.update_or_create(user=request.user, created_at=date, defaults=validated_data)
             return Response(NutritionGoalSerializer(goal).data, status=status.HTTP_200_OK)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

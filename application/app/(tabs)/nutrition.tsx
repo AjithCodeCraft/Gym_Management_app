@@ -12,6 +12,9 @@ import FoodSearchModal from "../../components/neutrition/FoodSearchModal";
 import { FoodItem, dummyFoods } from "@/components/neutrition/foodItems";
 import useNutritionData from "@/hooks/useNutritionData";
 import { mealsType, updateNutrisionGoal, userMetricsType, useUpdateUserMetrics } from "@/utils/nutrirtionUtils";
+import DateSelection from "@/components/neutrition/DateSelection";
+import DateView from "@/components/neutrition/DateView";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function Nutrition() {
     const [userMetrics, setUserMetrics] = useState<userMetricsType>({
@@ -60,9 +63,12 @@ export default function Nutrition() {
         fats: 0,
     });
     const [loading, setLoading] = useState<boolean>(true);
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [weekStartDate, setWeekStartDate] = useState(new Date());
+    const [showDateSelector, setShowDateSelector] = useState(false);
 
-    useNutritionData({ setLoading, setUserMetrics, setMeals });
-    useUpdateUserMetrics(loading, metricsModalVisible, userMetrics);
+    useNutritionData({ setLoading, setUserMetrics, setMeals, currentDate });
+    useUpdateUserMetrics(loading, metricsModalVisible, userMetrics, currentDate);
 
     useEffect(() => {
         let calories = 0,
@@ -172,7 +178,7 @@ export default function Nutrition() {
         setFoodSearchModalVisible(false);
         setSearchQuery("");
         setSearchResults([]);
-        updateNutrisionGoal(userMetrics, newMealsData, loading);
+        updateNutrisionGoal(userMetrics, newMealsData, loading, currentDate);
     };
 
     const openFoodSearch = (mealType: MealType) => {
@@ -188,10 +194,18 @@ export default function Nutrition() {
         day: "numeric",
     });
 
+    if (loading) {
+        return <LoadingSpinner />
+    }
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.dateText}>{formattedDate}</Text>
+                
+                <DateView currentDate={currentDate} setShowDateSelector={setShowDateSelector} 
+                    showDateSelector={showDateSelector}
+                />
+
                 {setupComplete ? (
                     <TouchableOpacity
                         style={styles.editMetricsButton}
@@ -212,6 +226,11 @@ export default function Nutrition() {
                     </TouchableOpacity>
                 )}
             </View>
+            
+            <DateSelection setCurrentDate={setCurrentDate} setMeals={setMeals} setShowDateSelector={setShowDateSelector}
+                currentDate={currentDate} showDateSelector={showDateSelector} weekStartDate={weekStartDate} setWeekStartDate={setWeekStartDate}
+            />
+
             {setupComplete && (
                 <View style={styles.nutritionSummary}>
                     <View style={styles.nutritionItem}>
@@ -319,7 +338,7 @@ export default function Nutrition() {
     );
 }
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#f8f9fa",
@@ -388,7 +407,7 @@ const styles = StyleSheet.create({
     },
     weekView: {
         flexDirection: "row",
-        justifyContent: "space-between",
+        justifyContent: "space-evenly",
     },
     dayButton: {
         alignItems: "center",
@@ -396,7 +415,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     dayButtonToday: {
-        backgroundColor: "#3498db",
+        backgroundColor: "#ededed",
+    },
+    daySelected: {
+        backgroundColor: "#32FF7E",
     },
     dayAbbreviation: {
         fontSize: 14,

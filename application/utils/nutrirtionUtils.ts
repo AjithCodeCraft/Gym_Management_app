@@ -2,6 +2,7 @@ import { FoodItem } from "@/components/neutrition/foodItems";
 import { apiAuth } from "@/api/axios";
 import { isAxiosError } from "axios";
 import { Dispatch, SetStateAction, useEffect } from "react";
+
 export interface nutritionalGoalType {
     height: number | undefined;
     weight: number | undefined;
@@ -43,8 +44,9 @@ const convertString = (value: string): string | undefined => {
     return value?.trim() ? value : undefined;
 };
 
-export const updateNutrisionGoal = async (userMetric: userMetricsType, meals:mealsType, loading: boolean) => {
+export const updateNutrisionGoal = async (userMetric: userMetricsType, meals:mealsType, loading: boolean, currentDate: Date) => {
     if (loading) return;
+    const date = currentDate.toLocaleDateString('en-ca');
     const data: nutritionalGoalType = {
         height: convertToNumber(userMetric.height),
         weight: convertToNumber(userMetric.weight),
@@ -63,7 +65,7 @@ export const updateNutrisionGoal = async (userMetric: userMetricsType, meals:mea
         if (data[key] === undefined) return;
     }
     try {
-        apiAuth.put("nutrition-goals/", data);
+        apiAuth.put(`nutrition-goals/${date}/`, data);
     } catch (error) {
         if (isAxiosError(error)) {
             console.log("API ERROR: ", error?.response?.data);
@@ -71,8 +73,9 @@ export const updateNutrisionGoal = async (userMetric: userMetricsType, meals:mea
     }
 };
 
-export const useUpdateUserMetrics = (loading: boolean, metricsModalVisible: boolean, userMetric: userMetricsType) => {
+export const useUpdateUserMetrics = (loading: boolean, metricsModalVisible: boolean, userMetric: userMetricsType, currentDate: Date) => {
     const updateUserMetrics = async () => {
+        const date = currentDate.toLocaleDateString('en-ca');
         const userMetricData = {
             height: convertToNumber(userMetric.height),
             weight: convertToNumber(userMetric.weight),
@@ -80,10 +83,10 @@ export const useUpdateUserMetrics = (loading: boolean, metricsModalVisible: bool
             sex: convertString(userMetric.gender),
             activity_level: convertString(userMetric.activityLevel),
         };
-        apiAuth.put("nutrition-goals/", userMetricData);
+        apiAuth.put(`nutrition-goals/${date}/`, userMetricData);
     }
     useEffect(() => {
         if (loading || metricsModalVisible) return;
         updateUserMetrics();
-    }, [userMetric, metricsModalVisible]);
+    }, [metricsModalVisible]);
 };
