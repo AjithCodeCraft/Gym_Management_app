@@ -238,7 +238,8 @@ class Payment(models.Model):
         max_length=10,
         choices=[
             ('online', 'Online'),
-            ('offline', 'Offline')
+            ('offline', 'Offline'),
+            ('fortifit','Fortifit')
         ],
         default='online'
     )
@@ -418,3 +419,13 @@ class DefaultUserMetrics(models.Model):
     activity_level = models.CharField(max_length=15, choices=ACTIVITY_LEVEL_CHOICES, default="sedentary",
                                       verbose_name="Activity Level"
     )
+
+
+class TrainerAssignment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='assigned_trainer')
+    trainer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_users')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    def str(self):
+        return f"{self.user.name} -> {self.trainer.name}"
