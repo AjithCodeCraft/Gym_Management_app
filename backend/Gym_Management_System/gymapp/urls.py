@@ -1,8 +1,10 @@
 from django.urls import path
 
+
 from .views import add_subscription,  assign_trainer, delete_all, delete_subscription, list_subscriptions, list_trainers, list_users, \
     list_users_and_trainers, login_user, register_user, remove_trainer, send_otp, send_password_reset_email, update_subscription, \
     update_trainer_details, update_user_details, verify_otp, NutritionGoalView,get_user_profile,home_chat, view_assigned_trainers
+
 
 urlpatterns = [
     path('send-otp/', send_otp, name='send-otp'), 

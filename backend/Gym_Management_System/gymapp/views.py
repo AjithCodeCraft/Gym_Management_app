@@ -3,7 +3,9 @@ from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from rest_framework.views import APIView
 
-from .models import OTPVerification, Payment, Subscription, TrainerAssignment, TrainerProfile, User, UserSubscription, NutritionGoal
+
+from .models import OTPVerification, Payment, Subscription, TrainerProfile, User, UserSubscription, NutritionGoal, DefaultUserMetrics
+
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
@@ -14,8 +16,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer
+
+from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
+from datetime import datetime    
+
 from django.shortcuts import get_object_or_404
+
 import json
 import os
 from django.http import JsonResponse
