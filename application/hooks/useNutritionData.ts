@@ -2,7 +2,7 @@ import { Dispatch, SetStateAction, useEffect } from "react";
 import { apiAuth } from "@/api/axios";
 import { AxiosError, isAxiosError } from "axios";
 import { mealsType, userMetricsType } from "@/utils/nutrirtionUtils";
-import { dummyFoods, FoodItem } from "@/components/neutrition/foodItems";
+import { dummyFoods, FoodItem } from '@/components/neutrition/foodItems';
 
 interface useNutritionPropType {
     setLoading: Dispatch<SetStateAction<boolean>>;
