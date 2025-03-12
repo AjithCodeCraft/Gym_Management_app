@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 import uuid
-from django.utils import timezone
+
 
 class Demo(models.Model):
     name = models.CharField(max_length=20)
@@ -81,6 +81,17 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.name}'s Profile"
+
+class TrainerAssignment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='assigned_trainer')
+    trainer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assigned_users')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.name} -> {self.trainer.name}"
+
+
 
 
 class TrainerProfile(models.Model):
@@ -238,7 +249,8 @@ class Payment(models.Model):
         max_length=10,
         choices=[
             ('online', 'Online'),
-            ('offline', 'Offline')
+            ('offline', 'Offline'),
+            ('fortifit','Fortifit')
         ],
         default='online'
     )
@@ -346,14 +358,9 @@ class NutritionGoal(models.Model):
         ("active", "Active"),
         ("very_active", "Very Active")
     ]
-    
-    SEX_CHOICES = [
-        ("male", "Male"),
-        ("female", "Female")
-    ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="nutrition_goal")
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="nutrition_goal")
     height = models.IntegerField(
         default=165,
         validators=[
@@ -368,7 +375,6 @@ class NutritionGoal(models.Model):
         MaxValueValidator(1000)
     ], blank=False, null=False)
     age = models.IntegerField(default=16, blank=False, null=False)
-    sex = models.CharField(default="male", max_length=6, choices=SEX_CHOICES)
     activity_level = models.CharField(max_length=15, choices=ACTIVITY_LEVEL_CHOICES, default="sedentary",
                                       verbose_name="Activity Level"
     )
@@ -377,44 +383,5 @@ class NutritionGoal(models.Model):
     lunch = models.JSONField(default=list)
     evening_snack = models.JSONField(default=list)
     dinner = models.JSONField(default=list)
-    created_at = models.DateField(default=timezone.now)
-    
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['user', 'created_at'], name='unique_user_date')
-        ]
+    created_at = models.DateField(auto_now_add=True)
 
-class DefaultUserMetrics(models.Model):
-    ACTIVITY_LEVEL_CHOICES = [
-        ("sedentary", "Sedentary"),
-        ("light", "Light"),
-        ("moderate", "Moderate"),
-        ("active", "Active"),
-        ("very_active", "Very Active")
-    ]
-    
-    SEX_CHOICES = [
-        ("male", "Male"),
-        ("female", "Female")
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="user_metrics")
-    height = models.IntegerField(
-        default=165,
-        validators=[
-            MinValueValidator(50),
-            MaxValueValidator(300)
-        ],
-        blank=False,
-        null=False
-    )
-    weight = models.IntegerField(default=65, validators=[
-        MinValueValidator(25),
-        MaxValueValidator(1000)
-    ], blank=False, null=False)
-    age = models.IntegerField(default=16, blank=False, null=False)
-    sex = models.CharField(default="male", max_length=6, choices=SEX_CHOICES)
-    activity_level = models.CharField(max_length=15, choices=ACTIVITY_LEVEL_CHOICES, default="sedentary",
-                                      verbose_name="Activity Level"
-    )
