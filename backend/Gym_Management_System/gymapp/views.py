@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from rest_framework.views import APIView
 
 
-from .models import OTPVerification, Payment, Subscription, TrainerProfile, User, UserSubscription, NutritionGoal, DefaultUserMetrics
+from .models import OTPVerification, Payment, Subscription, TrainerAssignment, TrainerProfile, User, UserSubscription, NutritionGoal, DefaultUserMetrics
 
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.contrib.auth.hashers import make_password, check_password
