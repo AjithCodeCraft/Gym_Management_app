@@ -675,8 +675,10 @@ class NutritionGoalView(APIView):
                 data = dict(NutritionGoalSerializer(goals).data)
                 for item in ['breakfast', 'morning_snack', 'lunch', 'evening_snack', 'dinner']:
                     data[item] = []
+            else:
+                return Response({'error': 'No nutrition goal found for current user'}, status=status.HTTP_404_NOT_FOUND)
+        
         return Response(data, status=status.HTTP_200_OK)
-        return Response({'error': 'No nutrition goal found for current user'}, status=status.HTTP_404_NOT_FOUND)
 
     # Will handle both Create and Update
     def put(self, request, date_str):
