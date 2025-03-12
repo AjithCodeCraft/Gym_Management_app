@@ -37,7 +37,8 @@ ALLOWED_HOSTS = [
 ]
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',  # Your frontend URL
-    'http://localhost:8081'
+    'http://localhost:8081',
+    'http://localhost:8082'
 ]
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'Authorization',
