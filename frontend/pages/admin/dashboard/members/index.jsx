@@ -19,6 +19,9 @@ const Members = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [availableTrainers, setAvailableTrainers] = useState([]);
+  const [showTrainersModal, setShowTrainersModal] = useState(false);
+  const [selectedTrainerId, setSelectedTrainerId] = useState(null);
 
   // Fetch members data when the component mounts
   useEffect(() => {
@@ -162,6 +165,83 @@ const Members = () => {
     }
   };
 
+  // Function to open trainer selection modal
+  const handleAssignTrainer = async (user) => {
+    try {
+      const accessToken = Cookies.get("access_token");
+      const response = await api.get("list_users_and_trainers/?type=trainer", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setAvailableTrainers(response.data);
+      setSelectedUser(user);
+      setSelectedTrainerId(null); // Reset selected trainer when opening modal
+      setShowTrainersModal(true);
+    } catch (error) {
+      console.error("Error fetching trainers:", error);
+      setError(error.message);
+    }
+  };
+
+  const handleTrainerSelection = async () => {
+    if (!selectedTrainerId) {
+      alert("Please select a trainer first.");
+      return;
+    }
+
+    setIsUpdating(true); // Start updating animation
+    setUpdateSuccess(false); // Reset success state
+
+    try {
+      const accessToken = Cookies.get("access_token");
+      await api.post(
+        "assign-trainer/",
+        {
+          user_id: selectedUser.id,
+          trainer_id: selectedTrainerId,
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      // Update the user's trainer in the UI
+      setMembers(prevMembers =>
+        prevMembers.map(member =>
+          member.id === selectedUser.id
+            ? {
+              ...member,
+              trainer: {
+                id: selectedTrainerId,
+                name: availableTrainers.find(trainer => trainer.id === selectedTrainerId).name,
+              },
+            }
+            : member
+        )
+      );
+
+      // Update selected user in UI
+      setSelectedUser(prev => ({
+        ...prev,
+        trainer: {
+          id: selectedTrainerId,
+          name: availableTrainers.find(trainer => trainer.id === selectedTrainerId).name,
+        },
+      }));
+
+      setTimeout(() => {
+        setIsUpdating(false); // Stop updating animation
+        // Keep the modal open for a moment so user can see success message
+        setTimeout(() => {
+          setShowTrainersModal(false); // Close modal after success
+        }, 1000);
+      }, 1000);
+    } catch (error) {
+      console.error("Error assigning trainer:", error);
+      setError(error.message);
+      setIsUpdating(false); // Stop updating animation
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -270,8 +350,11 @@ const Members = () => {
                               year: "numeric",
                             })}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center">
                             {member.payment_method || "N/A"}
+                            {member.payment_method && ["Offline", "UPI"].includes(member.payment_method) && (
+                              <img src="/invoice.svg" alt="Trainer Icon" width="25" height="25" />
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex space-x-2">
@@ -281,6 +364,13 @@ const Members = () => {
                                 onClick={() => handleUpgradePlan(member)}
                               >
                                 <ArrowUp className="h-5 w-5" />
+                              </button>
+                              <button
+                                className="text-gray-500 hover:text-gray-700"
+                                title="Assign Trainer"
+                                onClick={() => handleAssignTrainer(member)}
+                              >
+                                <img src="/Trainer.svg" alt="Trainer Icon" width="25" height="25" />
                               </button>
                             </div>
                           </td>
@@ -398,6 +488,76 @@ const Members = () => {
                   </div>
                 ) : (
                   "Confirm Upgrade"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTrainersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Select a Trainer for {selectedUser?.name}</h2>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Available Trainers</label>
+              <ul className="max-h-60 overflow-y-auto space-y-3">
+                {availableTrainers.map((trainer) => (
+                  <li
+                    key={trainer.id}
+                    className={`border rounded-lg p-3 flex justify-between items-center ${selectedTrainerId === trainer.id ? "border-green-500 bg-green-50" : "border-gray-200"
+                      }`}
+                    onClick={() => setSelectedTrainerId(trainer.id)}
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{trainer.name}</div>
+                      <div className="text-sm text-gray-600">
+                        <span>Availability: {trainer.trainer_profile.availability}</span>
+                        <span> • Experience: {trainer.experience} years</span>
+                        <span> • Specialization: {trainer.specialization}</span>
+                      </div>
+                    </div>
+                    <div className={`h-5 w-5 rounded-full ${selectedTrainerId === trainer.id
+                      ? "bg-green-500 border-green-500"
+                      : "border border-gray-300"
+                      }`}>
+                      {selectedTrainerId === trainer.id && (
+                        <Check className="h-5 w-5 text-white" />
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                onClick={() => setShowTrainersModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={`px-4 py-2 rounded-md ${!selectedTrainerId
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-orange-500 hover:bg-orange-600 text-white"
+                  }`}
+                onClick={handleTrainerSelection}
+                disabled={!selectedTrainerId || isUpdating}
+              >
+                {isUpdating ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
+                    Assigning...
+                  </div>
+                ) : updateSuccess ? (
+                  <div className="flex items-center">
+                    <Check className="h-4 w-4 mr-2" />
+                    Assigned!
+                  </div>
+                ) : (
+                  "Confirm Assignment"
                 )}
               </button>
             </div>

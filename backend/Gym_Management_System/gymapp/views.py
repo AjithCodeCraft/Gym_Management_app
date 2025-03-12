@@ -3,7 +3,9 @@ from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from rest_framework.views import APIView
 
-from .models import OTPVerification, Payment, Subscription, TrainerProfile, User, UserSubscription, NutritionGoal, DefaultUserMetrics
+
+from .models import OTPVerification, Payment, Subscription, TrainerAssignment, TrainerProfile, User, UserSubscription, NutritionGoal, DefaultUserMetrics
+
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
@@ -14,8 +16,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
+
+from django.shortcuts import get_object_or_404
+
 from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
 from datetime import datetime    
+
 import json
 import os
 from django.http import JsonResponse
@@ -541,6 +547,7 @@ def update_user_details(request):
     new_plan_id = request.data.get('new_plan_id')  # Required for upgrade
     is_active = request.data.get('is_active')  # Enable or disable user
     phone_number = request.data.get('phone_number')  # Update phone number
+    payment_method = request.data.get('payment_method', 'offline')  # Default to 'offline'
 
     try:
         user = User.objects.get(email=email)
@@ -572,18 +579,29 @@ def update_user_details(request):
             except Subscription.DoesNotExist:
                 return Response({'error': 'New subscription plan not found'}, status=status.HTTP_404_NOT_FOUND)
 
+            # Create a payment entry (Completed immediately)
+            payment = Payment.objects.create(
+                user=user,
+                amount=new_plan.price,  # Assuming Subscription model has a 'price' field
+                payment_date=timezone.now(),
+                payment_method=payment_method,
+                status="completed"  # All payments are marked as completed immediately
+            )
+
             # Check if user has a cancelled subscription
             cancelled_subscription = UserSubscription.objects.filter(user=user, status='cancelled').first()
             if cancelled_subscription:
-                # Reactivate the cancelled subscription instead of creating a new one
                 cancelled_subscription.subscription = new_plan
                 cancelled_subscription.status = 'active'
                 cancelled_subscription.start_date = timezone.now().date()
                 cancelled_subscription.end_date = cancelled_subscription.start_date + relativedelta(
                     months=new_plan.duration)
                 cancelled_subscription.save()
-                return Response({'message': 'Cancelled subscription reactivated with new plan'},
-                                status=status.HTTP_200_OK)
+                return Response({
+                    'message': 'Cancelled subscription reactivated with new plan',
+                    'payment_id': str(payment.id),
+                    'payment_status': payment.status
+                }, status=status.HTTP_200_OK)
 
             # If no cancelled subscription, upgrade the active one
             if subscription:
@@ -591,7 +609,11 @@ def update_user_details(request):
                 subscription.start_date = timezone.now().date()
                 subscription.end_date = subscription.start_date + relativedelta(months=new_plan.duration)
                 subscription.save()
-                return Response({'message': 'Subscription upgraded successfully'}, status=status.HTTP_200_OK)
+                return Response({
+                    'message': 'Subscription upgraded successfully',
+                    'payment_id': str(payment.id),
+                    'payment_status': payment.status
+                }, status=status.HTTP_200_OK)
 
             # If no active or cancelled subscription, create a new one
             new_subscription = UserSubscription.objects.create(
@@ -601,7 +623,11 @@ def update_user_details(request):
                 end_date=timezone.now().date() + relativedelta(months=new_plan.duration),
                 status='active'
             )
-            return Response({'message': 'New subscription added successfully'}, status=status.HTTP_201_CREATED)
+            return Response({
+                'message': 'New subscription added successfully',
+                'payment_id': str(payment.id),
+                'payment_status': payment.status
+            }, status=status.HTTP_201_CREATED)
 
         else:
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
@@ -610,6 +636,7 @@ def update_user_details(request):
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 @api_view(['PUT'])
@@ -797,3 +824,73 @@ def home_chat(request):
 
     except Exception as e:
         return JsonResponse({"error": "Internal server error", "details": str(e)}, status=500)
+
+
+
+
+@api_view(['POST'])
+def assign_trainer(request):
+    
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    user_id = request.data.get("user_id")
+    trainer_id = request.data.get("trainer_id")
+
+    try:
+        user = User.objects.get(id=user_id, user_type="user")
+        trainer = User.objects.get(id=trainer_id, user_type="trainer")
+    except User.DoesNotExist:
+        return Response({"detail": "User or trainer not found."}, status=status.HTTP_404_NOT_FOUND)
+
+   
+    assignment, created = TrainerAssignment.objects.update_or_create(
+        user=user,
+        defaults={"trainer": trainer}
+    )
+
+    return Response(
+        {"message": f"Trainer {trainer.name} assigned to {user.name}"},
+        status=status.HTTP_200_OK
+    )
+
+
+
+@api_view(['DELETE'])
+def remove_trainer(request, user_id):
+   
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        assignment = TrainerAssignment.objects.get(user_id=user_id)
+        assignment.delete()
+        return Response({"message": "Trainer assignment removed successfully"}, status=status.HTTP_200_OK)
+    except TrainerAssignment.DoesNotExist:
+        return Response({"detail": "No trainer assigned to this user."}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+@api_view(['GET'])
+def view_assigned_trainers(request):
+   
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    assignments = TrainerAssignment.objects.select_related('user', 'trainer')
+
+    data = [
+        {
+            "user_id": assignment.user.id,
+            "user_name": assignment.user.name,
+            "trainer_id": assignment.trainer.id,
+            "trainer_name": assignment.trainer.name
+        }
+        for assignment in assignments
+    ]
+
+    return Response({"assigned_trainers": data}, status=status.HTTP_200_OK)
