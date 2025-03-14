@@ -22,6 +22,8 @@ const Members = () => {
   const [availableTrainers, setAvailableTrainers] = useState([]);
   const [showTrainersModal, setShowTrainersModal] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState(null);
+  const [showTrainerDetailsModal, setShowTrainerDetailsModal] = useState(false);
+  const [trainerDetails, setTrainerDetails] = useState(null);
 
   // Fetch members data when the component mounts
   useEffect(() => {
@@ -242,6 +244,27 @@ const Members = () => {
     }
   };
 
+  // Function to view assigned trainer details
+  const handleViewAssignedTrainer = async (user) => {
+    try {
+      const accessToken = Cookies.get("access_token");
+      const response = await api.get(`assigned-trainer/${user.id}/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      setTrainerDetails(response.data);
+      setShowTrainerDetailsModal(true);
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail === "No trainer assigned for this user.") {
+        setTrainerDetails(null);
+        setShowTrainerDetailsModal(true);
+      } else {
+        console.log("Error fetching assigned trainer:", error);
+        setError(error.message);
+      }
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -372,6 +395,13 @@ const Members = () => {
                               >
                                 <img src="/Trainer.svg" alt="Trainer Icon" width="25" height="25" />
                               </button>
+                              <button
+                                className="text-blue-500 hover:text-blue-700"
+                                title="View Assigned Trainer"
+                                onClick={() => handleViewAssignedTrainer(member)}
+                              >
+                                <img src="/view-eye.svg" alt="View Icon" width="25" height="25" />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -426,7 +456,6 @@ const Members = () => {
               >
                 <option value="">Select Payment Method</option>
                 <option value="online">UPI</option>
-                <option value="fortifit">Fortifit App</option>
                 <option value="offline">Offline</option>
               </select>
             </div>
@@ -564,6 +593,53 @@ const Members = () => {
           </div>
         </div>
       )}
+
+      {showTrainerDetailsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 border-b border-gray-200 pb-2">Assigned Trainer Details</h2>
+            {trainerDetails && trainerDetails.assigned_trainers && trainerDetails.assigned_trainers.length > 0 ? (
+              <div className="overflow-x-auto mt-4">
+                <table className="min-w-full bg-white">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-2 text-left text-gray-600">Name</th>
+                      <th className="px-4 py-2 text-left text-gray-600">Experience</th>
+                      <th className="px-4 py-2 text-left text-gray-600">Specialization</th>
+                      <th className="px-4 py-2 text-left text-gray-600">Availability</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trainerDetails.assigned_trainers.map((trainer, index) => (
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="px-4 py-2 text-gray-800">{trainer.trainer_name}</td>
+                        <td className="px-4 py-2 text-gray-800">{trainer.experience} years</td>
+                        <td className="px-4 py-2 text-gray-800">{trainer.specialization}</td>
+                        <td className="px-4 py-2 text-gray-800">
+                          {trainer.availability === "both" ? "Morning and Evening" : trainer.availability}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 text-center py-4">No trainer details available.</p>
+            )}
+            <div className="mt-6 flex justify-end">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700"
+                onClick={() => setShowTrainerDetailsModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
     </div>
   );
 };
