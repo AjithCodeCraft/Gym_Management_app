@@ -886,3 +886,36 @@ def view_assigned_trainers(request):
     ]
 
     return Response({"assigned_trainers": data}, status=status.HTTP_200_OK)
+
+
+
+
+@api_view(['GET'])
+def view_assigned_trainer_for_user(request, user_id):
+    # Check if the user is authenticated and an admin
+    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+        return Response({"detail": "You do not have permission to perform this action."},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    # Filter assignments for the given user ID and include related data
+    assignments = TrainerAssignment.objects.select_related('trainer__trainer_profile').filter(user_id=user_id)
+
+    # If no assignment found, return appropriate response
+    if not assignments.exists():
+        return Response({"detail": "No trainer assigned for this user."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Prepare response data
+    data = [
+        {
+            "user_id": assignment.user.id,
+            "user_name": assignment.user.name,
+            "trainer_id": assignment.trainer.id,
+            "trainer_name": assignment.trainer.name,
+            "experience": assignment.trainer.trainer_profile.experience_years,  # Fetch from TrainerProfile
+            "specialization": assignment.trainer.trainer_profile.specialization,  # Fetch from TrainerProfile
+            "availability": assignment.trainer.trainer_profile.availability  # Fetch from TrainerProfile
+        }
+        for assignment in assignments
+    ]
+
+    return Response({"assigned_trainers": data}, status=status.HTTP_200_OK)
