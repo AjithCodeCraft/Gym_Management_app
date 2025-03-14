@@ -18,12 +18,15 @@ const Members = () => {
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
-  const [updateSuccess, setUpdateSuccess] = useState(false);
   const [availableTrainers, setAvailableTrainers] = useState([]);
   const [showTrainersModal, setShowTrainersModal] = useState(false);
   const [selectedTrainerId, setSelectedTrainerId] = useState(null);
   const [showTrainerDetailsModal, setShowTrainerDetailsModal] = useState(false);
   const [trainerDetails, setTrainerDetails] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [userToCancel, setUserToCancel] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
 
   // Fetch members data when the component mounts
   useEffect(() => {
@@ -64,6 +67,78 @@ const Members = () => {
     );
   }, [members, searchQuery]);
 
+  const openCancelModal = (user) => {
+    setUserToCancel(user);
+    setCancelError(null);
+    setShowCancelModal(true);
+  };
+
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setCancelError(null);
+    setUserToCancel(null);
+  };
+
+  const handleCancelUpgrade = async () => {
+    if (!userToCancel) return;
+
+    setIsCancelling(true); // Show "Cancelling..."
+    setCancelError(null);  // Clear previous errors before making API call
+
+    try {
+      const accessToken = Cookies.get("access_token");
+
+      const response = await api.put(
+        "update_user_details/",
+        {
+          email: userToCancel.email,
+          action: "cancel",
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      // Check if API response contains the error message
+      if (response.data?.error?.includes("No active subscription found")) {
+        setCancelError("No active subscription found.");
+        setIsCancelling(false);
+        return;
+      }
+
+      // Update members list
+      setMembers((prevMembers) =>
+        prevMembers.map((member) =>
+          member.id === userToCancel.id
+            ? {
+              ...member,
+              subscriptions: member.subscriptions
+                ? {
+                  ...member.subscriptions,
+                  name: "N/A",
+                  end_date: "N/A",
+                  status: "cancelled",
+                }
+                : null,
+            }
+            : member
+        )
+      );
+
+      closeCancelModal(); // Close modal after success
+    } catch (error) {
+      console.log("Error cancelling subscription:", error);
+
+      if (error.response?.data?.error) {
+        setCancelError(error.response.data.error);
+      } else {
+        setCancelError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsCancelling(false); // Reset button state
+    }
+  };
+
   // Function to upgrade a member's plan
   const handleUpgradePlan = async (user) => {
     try {
@@ -94,7 +169,6 @@ const Members = () => {
     }
 
     setIsUpdating(true); // Start updating animation
-    setUpdateSuccess(false); // Reset success state
 
     try {
       const accessToken = Cookies.get("access_token");
@@ -191,7 +265,6 @@ const Members = () => {
     }
 
     setIsUpdating(true); // Start updating animation
-    setUpdateSuccess(false); // Reset success state
 
     try {
       const accessToken = Cookies.get("access_token");
@@ -264,7 +337,6 @@ const Members = () => {
     }
   };
 
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -322,6 +394,7 @@ const Members = () => {
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -346,6 +419,10 @@ const Members = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{member.email}</div>
                             <div className="text-xs text-gray-500">{member.phone_number}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{member.gender}</div>
+                            
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="px-2 py-1 text-xs rounded-md bg-blue-100 text-blue-800">
@@ -394,6 +471,13 @@ const Members = () => {
                                 onClick={() => handleAssignTrainer(member)}
                               >
                                 <img src="/Trainer.svg" alt="Trainer Icon" width="25" height="25" />
+                              </button>
+                              <button
+                                onClick={() => openCancelModal(member)}
+                                className="text-yellow-500 hover:text-yellow-700"
+                                title="Cancel Upgrade"
+                              >
+                                <Trash2 className="h-5 w-5" />
                               </button>
                               <button
                                 className="text-blue-500 hover:text-blue-700"
@@ -510,11 +594,6 @@ const Members = () => {
                     <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
                     Updating...
                   </div>
-                ) : updateSuccess ? (
-                  <div className="flex items-center">
-                    <Check className="h-4 w-4 mr-2" />
-                    Updated!
-                  </div>
                 ) : (
                   "Confirm Upgrade"
                 )}
@@ -580,11 +659,6 @@ const Members = () => {
                     <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
                     Assigning...
                   </div>
-                ) : updateSuccess ? (
-                  <div className="flex items-center">
-                    <Check className="h-4 w-4 mr-2" />
-                    Assigned!
-                  </div>
                 ) : (
                   "Confirm Assignment"
                 )}
@@ -638,8 +712,37 @@ const Members = () => {
         </div>
       )}
 
-
-
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Confirm Cancellation</h2>
+            <p className="text-gray-700">Are you sure you want to cancel the subscription for {userToCancel?.name}?</p>
+            {cancelError && <p className="text-red-500 mt-2">{cancelError}</p>}
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                onClick={closeCancelModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                onClick={handleCancelUpgrade}
+                disabled={isCancelling}
+              >
+                {isCancelling ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
+                    Cancelling...
+                  </div>
+                ) : (
+                  "Confirm"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

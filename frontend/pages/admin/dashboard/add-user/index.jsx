@@ -165,6 +165,8 @@ const AddMember = () => {
       });
 
       if (response.data.success) {
+        const data = response.data
+        console.log(data)
         setSuccessMessage("Member added successfully! Login credentials sent to their email.");
         setShowPopup(true); // Show the popup
       } else {
@@ -463,6 +465,7 @@ const AddMember = () => {
                       value={formData.gender}
                       onChange={handleChange}
                       className="mt-1 block w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      required
                     >
                       <option value="">Select Gender</option>
                       <option value="male">Male</option>
