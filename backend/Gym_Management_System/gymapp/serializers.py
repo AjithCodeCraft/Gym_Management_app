@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics
+from .models import Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics
 
 
 
@@ -85,3 +85,22 @@ class DefaultUserMetricsSerializer(serializers.ModelSerializer):
         allowed_fields = set(self.fields.keys())
         filtered_data = {key: value for key, value in data.items() if key in allowed_fields}
         return super().to_internal_value(filtered_data)
+    
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.name', read_only=True)  # Get user's name
+
+    class Meta:
+        model = Payment
+        fields = [
+            'id',
+            'user', 
+            'user_name',  
+            'amount',
+            'payment_date',
+            'payment_method',
+            'status',
+            'created_at',
+            'updated_at',
+        ]

@@ -16,17 +16,8 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [editedValues, setEditedValues] = useState({});
-  const [availablePlans, setAvailablePlans] = useState([]);
-  const [showPlansModal, setShowPlansModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedPlanId, setSelectedPlanId] = useState(null); // Track selected plan ID
-  const [isUpdating, setIsUpdating] = useState(false); // Track update state
-  const [updateSuccess, setUpdateSuccess] = useState(false); // Track update success
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [userToCancel, setUserToCancel] = useState(null);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [cancelError, setCancelError] = useState(null);
   const [errors, setErrors] = useState({});
+  
 
 
   // Fetch both members and trainers data when the component mounts
@@ -82,6 +73,12 @@ const Dashboard = () => {
     return new Date(dateString);
   };
 
+  const handleCancel = () => {
+    setEditingUser(null);
+    setError("");
+    setErrors({});
+  };
+
   const formatDate = (date) => {
     return date.toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -106,23 +103,7 @@ const Dashboard = () => {
     }, 0),
   };
 
-  const openCancelModal = (user) => {
-    setUserToCancel(user);
-    setCancelError(null);
-    setShowCancelModal(true);
-  };
-
-  const closeCancelModal = () => {
-    setShowCancelModal(false);
-    setCancelError(null);
-    setUserToCancel(null);
-  };
-
-  const handleCancel = () => {
-    setEditingUser(null);
-    setError("");
-    setErrors({});
-  };
+  
 
   const handleEdit = (user) => {
     setEditingUser(user.id);
@@ -259,166 +240,6 @@ const Dashboard = () => {
       } else {
         setErrors({ general: errorMessage });
       }
-    }
-  };
-
-
-
-
-
-  const handleCancelUpgrade = async () => {
-    if (!userToCancel) return;
-
-    setIsCancelling(true); // Show "Cancelling..."
-    setCancelError(null);  // Clear previous errors before making API call
-
-    try {
-      const accessToken = Cookies.get("access_token");
-
-      const response = await api.put(
-        "update_user_details/",
-        {
-          email: userToCancel.email,
-          action: "cancel",
-        },
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-
-      // Check if API response contains the error message
-      if (response.data?.error?.includes("No active subscription found")) {
-        setCancelError("No active subscription found.");
-        setIsCancelling(false);
-        return;
-      }
-
-      // Update members list
-      setMembers((prevMembers) =>
-        prevMembers.map((member) =>
-          member.id === userToCancel.id
-            ? {
-              ...member,
-              subscriptions: member.subscriptions
-                ? {
-                  ...member.subscriptions,
-                  name: "N/A",
-                  end_date: "N/A",
-                  status: "cancelled",
-                }
-                : null,
-            }
-            : member
-        )
-      );
-
-      closeCancelModal(); // Close modal after success
-    } catch (error) {
-      console.log("Error cancelling subscription:", error);
-
-      if (error.response?.data?.error) {
-        setCancelError(error.response.data.error);
-      } else {
-        setCancelError("Something went wrong. Please try again.");
-      }
-    } finally {
-      setIsCancelling(false); // Reset button state
-    }
-  };
-
-  // Call this when closing the modal
-
-
-  const handleUpgradePlan = async (user) => {
-    try {
-      const accessToken = Cookies.get("access_token");
-      const response = await api.get("subscriptions/", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      setAvailablePlans(response.data);
-      setSelectedUser(user);
-      setSelectedPlanId(null); // Reset selected plan when opening modal
-      setShowPlansModal(true);
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-      setError(error.message);
-    }
-  };
-
-  const handlePlanSelection = async () => {
-    if (!selectedPlanId) {
-      alert("Please select a plan first.");
-      return;
-    }
-
-    setIsUpdating(true); // Start updating animation
-    setUpdateSuccess(false); // Reset success state
-
-    try {
-      const accessToken = Cookies.get("access_token");
-      await api.put(
-        "update_user_details/",
-        {
-          email: selectedUser.email,
-          action: 'upgrade',
-          new_plan_id: selectedPlanId,
-        },
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
-
-      // Find the selected plan details for immediate UI update
-      const selectedPlan = availablePlans.find(plan => plan.id === selectedPlanId);
-
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(startDate.getMonth() + (selectedPlan.duration || 1));
-      // Update the user's subscriptions in the UI
-      setMembers(prevMembers =>
-        prevMembers.map(member =>
-          member.id === selectedUser.id
-            ? {
-              ...member,
-              subscriptions: {
-                id: selectedPlanId,
-                name: selectedPlan.name,
-                status: "active",
-                duration: selectedPlan.duration,
-                price: selectedPlan.price,
-                has_personal_training: selectedPlan.personal_training,
-                end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0], // Ensure end date is updated
-              },
-            }
-            : member
-        )
-      );
-
-      // Update selected user in UI
-      setSelectedUser(prev => ({
-        ...prev,
-        subscriptions: {
-          id: selectedPlanId,
-          name: selectedPlan.name,
-          status: "active",
-          duration: selectedPlan.duration,
-          price: selectedPlan.price,
-          has_personal_training: selectedPlan.personal_training,
-          end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0], // Ensure end date is updated
-        },
-      }));
-
-      setTimeout(() => {
-        setIsUpdating(false); // Stop updating animation
-        // Keep the modal open for a moment so user can see success message
-        setTimeout(() => {
-          setShowPlansModal(false); // Close modal after success
-        }, 1000);
-      }, 1000);
-    } catch (error) {
-      console.error("Error upgrading plan:", error);
-      setError(error.message);
-      setIsUpdating(false); // Stop updating animation
     }
   };
 
@@ -767,20 +588,8 @@ const Dashboard = () => {
                                   </button>
                                   {activeTab === "members" && (
                                     <>
-                                      <button
-                                        onClick={() => openCancelModal(user)}
-                                        className="text-yellow-500 hover:text-yellow-700"
-                                        title="Cancel Upgrade"
-                                      >
-                                        <Trash2 className="h-5 w-5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleUpgradePlan(user)}
-                                        className="text-green-500 hover:text-green-700"
-                                        title="Upgrade Plan"
-                                      >
-                                        <ArrowUp className="h-5 w-5" />
-                                      </button>
+                                      
+                    
                                     </>
                                   )}
                                 </>
@@ -793,32 +602,7 @@ const Dashboard = () => {
                   </table>
                 </div>
 
-                {showCancelModal && (
-                  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-                      <h2 className="text-xl font-semibold mb-4">Confirm Cancellation</h2>
-                      <p>Are you sure you want to cancel the plan for <strong>{userToCancel?.email}</strong>?</p>
-                      {cancelError && <p className="text-red-500 mt-2">{cancelError}</p>} {/* Show error message */}
-
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          className="px-4 py-2 bg-gray-300 text-gray-700 rounded mr-2"
-                          onClick={closeCancelModal}
-                          disabled={isCancelling} // Disable if cancelling
-                        >
-                          No, Keep Plan
-                        </button>
-                        <button
-                          className="px-4 py-2 bg-red-600 text-white rounded"
-                          onClick={handleCancelUpgrade}
-                          disabled={isCancelling} // Disable if cancelling
-                        >
-                          {isCancelling ? "Cancelling..." : "Yes, Cancel Plan"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                
 
 
                 <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6 flex items-center justify-between">
@@ -841,86 +625,7 @@ const Dashboard = () => {
         </main>
       </div>
 
-      {showPlansModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Select a Plan for {selectedUser?.name}</h2>
-
-            {selectedUser && selectedUser.subscriptions && selectedUser.subscriptions.length > 0 && (
-              <div className="mb-4 p-3 bg-gray-100 rounded-lg">
-                <h3 className="font-medium text-gray-700">Current Plan</h3>
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold">{selectedUser.subscriptions[0].name}</span>
-                  {selectedUser.subscriptions[0].duration &&
-                    <span> • {selectedUser.subscriptions[0].duration} months</span>}
-                  <span> • {selectedUser.subscriptions[0].personal_training ? 'Includes' : 'No'} personal training</span>
-                </p>
-              </div>
-            )}
-
-            <div className="max-h-60 overflow-y-auto">
-              <ul className="space-y-3">
-                {availablePlans.map((plan) => (
-                  <li
-                    key={plan.id}
-                    className={`border rounded-lg p-3 flex justify-between items-center ${selectedPlanId === plan.id ? "border-green-500 bg-green-50" : "border-gray-200"
-                      }`}
-                    onClick={() => setSelectedPlanId(plan.id)}
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium">{plan.name}</div>
-                      <div className="text-sm text-gray-600">
-                        {plan.duration && <span>{plan.duration} months • </span>}
-                        <span>{plan.personal_training ? 'Includes' : 'No'} personal training</span>
-                        {plan.price && <span> • ₹{plan.price}</span>}
-                      </div>
-                    </div>
-                    <div className={`h-5 w-5 rounded-full ${selectedPlanId === plan.id
-                      ? "bg-green-500 border-green-500"
-                      : "border border-gray-300"
-                      }`}>
-                      {selectedPlanId === plan.id && (
-                        <Check className="h-5 w-5 text-white" />
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                onClick={() => setShowPlansModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className={`px-4 py-2 rounded-md ${!selectedPlanId
-                  ? "bg-gray-300 cursor-not-allowed"
-                  : "bg-orange-500 hover:bg-orange-600 text-white"
-                  }`}
-                onClick={handlePlanSelection}
-                disabled={!selectedPlanId || isUpdating}
-              >
-                {isUpdating ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
-                    Updating...
-                  </div>
-                ) : updateSuccess ? (
-                  <div className="flex items-center">
-                    <Check className="h-4 w-4 mr-2" />
-                    Updated!
-                  </div>
-                ) : (
-                  "Confirm Upgrade"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 };

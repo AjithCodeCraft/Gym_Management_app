@@ -2,6 +2,8 @@ import random
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+
 
 from .models import (OTPVerification, Payment, Subscription, TrainerProfile, User,
                      UserSubscription, NutritionGoal, DefaultUserMetrics, TrainerAssignment)
@@ -15,7 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
+from .serializers import LightweightUserSerializer, PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
 from datetime import datetime    
 import json
 import os
@@ -100,6 +102,7 @@ def register_user(request):
     name = request.data.get('name')
     phone = request.data.get('phone_number')
     user_type = request.data.get('user_type', 'user')
+    gender = request.data.get('gender')
 
     # Set password based on user type
     if user_type == 'admin':
@@ -167,6 +170,7 @@ def register_user(request):
             phone_number=phone,
             name=name,
             user_type=user_type,
+            gender=gender,
             password=make_password(password)  # Store hashed password
         )
 
@@ -919,3 +923,33 @@ def view_assigned_trainer_for_user(request, user_id):
     ]
 
     return Response({"assigned_trainers": data}, status=status.HTTP_200_OK)
+
+
+    
+
+@api_view(['GET'])
+def user_payments_with_subscription(request, user_id):
+    if not request.user.is_authenticated:
+        return Response({"message": "You are not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Ensure only admin can access
+    if request.user.user_type != 'admin':
+        return Response({"message": "Unauthorized access"}, status=status.HTTP_403_FORBIDDEN)
+
+    user = get_object_or_404(User, id=user_id)
+    
+    payments = Payment.objects.filter(user=user).order_by('-payment_date')
+
+    # Corrected way to get the latest subscription
+    user_subscription = UserSubscription.objects.filter(user=user).order_by('-subscription__start_date').first()
+    subscription = user_subscription.subscription if user_subscription else None
+
+    payment_data = PaymentSerializer(payments, many=True).data
+    subscription_data = SubscriptionSerializer(subscription).data if subscription else None
+
+    return Response({
+        "user_id": user.id,
+        "user_name": user.name,
+        "payments": payment_data,
+        "subscription": subscription_data
+    }, status=status.HTTP_200_OK)
