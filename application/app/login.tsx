@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image, Alert, Modal, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Image, Alert, Modal, StyleSheet, ActivityIndicator } from "react-native";
 import { Redirect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons"; // For icons
 import axios from "axios";
@@ -14,13 +14,15 @@ export default function LoginPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  // console.log('url',API_URL);
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+  const [isLoading, setIsLoading] = useState(false); // State for loading animation
 
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please enter both email and password!");
       return;
     }
+    setIsLoading(true); // Start loading animation
     const credentials = {
       email: email,
       password: password
@@ -38,6 +40,8 @@ export default function LoginPage() {
             "Invalid Credentials",
             `Please check your email and password!`
         );
+    } finally {
+        setIsLoading(false); // Stop loading animation
     }
   };
 
@@ -99,18 +103,31 @@ export default function LoginPage() {
                 <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
               </TouchableOpacity>
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <MaterialIcons
+                  name={showPassword ? "visibility-off" : "visibility"}
+                  size={24}
+                  color="#ccc"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Login Button */}
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Login</Text>
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
           </TouchableOpacity>
 
         </View>
@@ -222,6 +239,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
+  passwordInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 40,
+  },
   forgotPasswordText: {
     fontSize: 14,
     color: "#f97316",
@@ -239,20 +268,6 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: "white",
     fontWeight: "500",
-  },
-  signUpContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 24,
-  },
-  signUpText: {
-    fontSize: 14,
-    color: "gray",
-  },
-  signUpLink: {
-    fontSize: 14,
-    color: "orange",
-    textDecorationLine: "underline",
   },
   imageContainer: {
     flex: 1,
