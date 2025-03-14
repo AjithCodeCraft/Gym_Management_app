@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiAuth } from '@/api/axios';
 
 const UserProfile = () => {
@@ -53,7 +52,7 @@ const UserProfile = () => {
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <Image
-          source={{ uri: user?.profile_picture_url || 'https://via.placeholder.com/150' }}
+          source={{ uri: user?.profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8dXNlciUyMHByb2ZpbGV8ZW58MHx8MHx8fDA%3D' }}
           style={styles.profileImage}
         />
         <Text style={styles.userName}>{user?.name || 'User Name'}</Text>
@@ -76,11 +75,6 @@ const UserProfile = () => {
           <MaterialIcons name="phone" size={24} color="#f97316" />
           <Text style={styles.detailText}>Phone: {user?.phone_number || 'Not specified'}</Text>
         </View>
-
-        <View style={styles.detailItem}>
-          <MaterialIcons name="shield" size={24} color="#f97316" />
-          <Text style={styles.detailText}>User Type: {user?.user_type || 'User'}</Text>
-        </View>
       </View>
 
       {/* Subscriptions */}
@@ -101,11 +95,6 @@ const UserProfile = () => {
           ))}
         </View>
       )}
-
-      {/* Edit Profile Button */}
-      <TouchableOpacity style={styles.editButton}>
-        <Text style={styles.editButtonText}>Edit Profile</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -113,7 +102,7 @@ const UserProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
     padding: 24,
   },
   loadingContainer: {
@@ -135,15 +124,18 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
     marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#f97316',
   },
   userName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#1f2937',
+    marginBottom: 8,
   },
   userEmail: {
     fontSize: 16,
@@ -151,6 +143,14 @@ const styles = StyleSheet.create({
   },
   detailsContainer: {
     marginBottom: 32,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
   detailItem: {
     flexDirection: 'row',
@@ -164,9 +164,17 @@ const styles = StyleSheet.create({
   },
   subscriptionsContainer: {
     marginBottom: 32,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
   subscriptionsTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 16,
     color: '#1f2937',
@@ -196,17 +204,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginTop: 8,
-  },
-  editButton: {
-    backgroundColor: '#f97316',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 
