@@ -135,7 +135,7 @@ class UserSubscription(models.Model):
         return f"Subscription {self.subscription.name} - {self.user.name} ({self.status})"
 
 
-class WorkoutPlan(models.Model):
+""" class WorkoutPlan(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='workout_plans')
     name = models.CharField(max_length=255)
@@ -145,9 +145,9 @@ class WorkoutPlan(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.user.name}"
+ """
 
-
-class WorkoutDay(models.Model):
+""" class WorkoutDay(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     workout_plan = models.ForeignKey('WorkoutPlan', on_delete=models.CASCADE, related_name='workout_days')
     days_of_week = models.IntegerField(help_text="Day of the week (0=Monday, 6=Sunday)")
@@ -157,9 +157,9 @@ class WorkoutDay(models.Model):
 
     def __str__(self):
         return f"{self.workout_plan.name} - Day {self.days_of_week} ({self.focus})"
+ """
 
-
-class Exercise(models.Model):
+""" class Exercise(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, help_text="Name of the exercise")
     description = models.TextField(help_text="Detailed description of the exercise")
@@ -186,7 +186,7 @@ class WorkoutExercise(models.Model):
 
     def __str__(self):
         return f"{self.workout_day} - {self.exercise.name} (Sets: {self.sets}, Reps: {self.reps})"
-
+ """
 
 class MealType(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -299,7 +299,7 @@ class SleepLog(models.Model):
         return f"Sleep Log for {self.user.name} on {self.sleep_date}"
 
 
-class UserWorkout(models.Model):
+""" class UserWorkout(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='user_workouts')
     workout_day = models.ForeignKey('WorkoutDay', on_delete=models.CASCADE, related_name='user_workouts')
@@ -323,7 +323,7 @@ class UserCompletedExercise(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user_workout.user.name} - {self.exercise.name} ({'Completed' if self.completed else 'Pending'})"
+        return f"{self.user_workout.user.name} - {self.exercise.name} ({'Completed' if self.completed else 'Pending'})" """
 
 
 class Challenge(models.Model):
@@ -385,42 +385,6 @@ class NutritionGoal(models.Model):
             models.UniqueConstraint(fields=['user', 'created_at'], name='unique_user_date')
         ]
 
-class DefaultUserMetrics(models.Model):
-    ACTIVITY_LEVEL_CHOICES = [
-        ("sedentary", "Sedentary"),
-        ("light", "Light"),
-        ("moderate", "Moderate"),
-        ("active", "Active"),
-        ("very_active", "Very Active")
-    ]
-    
-    SEX_CHOICES = [
-        ("male", "Male"),
-        ("female", "Female")
-    ]
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="user_metrics")
-    height = models.IntegerField(
-        default=165,
-        validators=[
-            MinValueValidator(50),
-            MaxValueValidator(300)
-        ],
-        blank=False,
-        null=False
-    )
-    weight = models.IntegerField(default=65, validators=[
-        MinValueValidator(25),
-        MaxValueValidator(1000)
-    ], blank=False, null=False)
-    age = models.IntegerField(default=16, blank=False, null=False)
-    sex = models.CharField(default="male", max_length=6, choices=SEX_CHOICES)
-    activity_level = models.CharField(max_length=15, choices=ACTIVITY_LEVEL_CHOICES, default="sedentary",
-                                      verbose_name="Activity Level"
-    )
-
-
 class TrainerAssignment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='assigned_trainer')
@@ -429,3 +393,71 @@ class TrainerAssignment(models.Model):
 
     def str(self):
         return f"{self.user.name} -> {self.trainer.name}"
+
+# Exercise Section
+class Exercise(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    
+class BodyPart(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+        
+class DailyWorkout(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="workout_history")
+    body_part = models.ForeignKey(BodyPart, on_delete=models.CASCADE, related_name="daily_body_part")
+    date = models.DateField(default=timezone.now)
+    
+# Links Exercise and DailyWorkout - So that each workout can have defferent Status
+class WorkoutExercise(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('done', 'Done')
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workout = models.ForeignKey(DailyWorkout, on_delete=models.CASCADE, related_name="workout_exercise")
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name="exercise_instance")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    sets = models.IntegerField(default=3, validators=[MinValueValidator(1)])
+    reps = models.IntegerField(default=10, validators=[MinValueValidator(1)])
+    rest = models.IntegerField(default=30, validators=[MinValueValidator(10)])
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['workout', 'exercise'], name="unique_workout_exercise")
+        ]
+    
+class DefaultWorkout(models.Model):
+    DAY_CHOICES = [
+        ('sunday', 'Sunday'),
+        ('monday', 'Monday'),
+        ('tuesday', 'Tuesday'),
+        ('wednesday', 'Wednesday'),
+        ('thursday', 'Thursday'),
+        ('friday', 'Friday'),
+        ('saturday', 'Saturday'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="default_workout")
+    day = models.CharField(max_length=10, choices=DAY_CHOICES)
+    body_part = models.ForeignKey(BodyPart, on_delete=models.CASCADE, related_name="default_body_part")
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'day'], name="user_default_workout")
+        ]
+        
+class DefaultWorkoutExercise(models.Model):
+    workout = models.ForeignKey(DefaultWorkout, on_delete=models.CASCADE, related_name="default_workout_exercise")
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name="default_exercise_instance")
+    sets = models.IntegerField(default=3, validators=[MinValueValidator(1)])
+    reps = models.IntegerField(default=10, validators=[MinValueValidator(1)])
+    rest = models.IntegerField(default=30, validators=[MinValueValidator(10)])
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['workout', 'exercise'], name="unique_default_workout_exercise")
+        ]
+# End Exercise Section
