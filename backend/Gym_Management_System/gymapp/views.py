@@ -937,11 +937,10 @@ def user_payments_with_subscription(request, user_id):
         return Response({"message": "Unauthorized access"}, status=status.HTTP_403_FORBIDDEN)
 
     user = get_object_or_404(User, id=user_id)
-    
     payments = Payment.objects.filter(user=user).order_by('-payment_date')
 
-    # Corrected way to get the latest subscription
-    user_subscription = UserSubscription.objects.filter(user=user).order_by('-subscription__start_date').first()
+    # Fetch the latest subscription correctly
+    user_subscription = UserSubscription.objects.filter(user=user).order_by('-created_at').first()
     subscription = user_subscription.subscription if user_subscription else None
 
     payment_data = PaymentSerializer(payments, many=True).data
