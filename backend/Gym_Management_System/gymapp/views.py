@@ -14,7 +14,6 @@ from .models import (
     TrainerAssignment,
     DailyWorkout,
     DefaultWorkout,
-    DefaultWorkoutExercise,
 )
 from rest_framework.decorators import (
     api_view,
@@ -31,12 +30,12 @@ import requests
 from django.conf import settings
 from django.core.mail import send_mail
 from .serializers import (
-    DefaultWorkoutReadSerializer,
     LightweightUserSerializer,
     SubscriptionSerializer,
     UserSerializer,
     NutritionGoalSerializer,
     DefaultWorkoutSerializer,
+    DailyWorkoutSerializer,
 )
 from datetime import datetime
 import json
@@ -1161,8 +1160,8 @@ from gradio_client import Client
 client = Client("alameenas/gym_assastant")
 
 
-@api_view(["GET"])
-def chat(request, date_str):
+@api_view(["POST"])
+def chat(request):
     if not request.user.is_authenticated:
         return Response(
             {"message": "You are not logged in!"}, status=status.HTTP_403_FORBIDDEN
@@ -1219,26 +1218,13 @@ def chat(request, date_str):
                     status=500,
                 )
 
-        created_defaults = []
-        errors = []
+        serializer = DefaultWorkoutSerializer(
+            data={"exercise_data": result}, context={"user": request.user}
+        )
+        if serializer.is_valid():
+            serializer.save()
 
-        for day, workout_data in result["week"].items():
-            serializer = DefaultWorkoutSerializer(
-                data=workout_data, context={"user": request.user}
-            )
-            if serializer.is_valid():
-                created_default = serializer.save()
-                created_defaults.append(serializer.data)
-            else:
-                errors.append({day: serializer.errors})
-        if errors:
-            return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
-
-        user_workouts = DefaultWorkout.objects.filter(
-            user=request.user
-        ).prefetch_related("default_workout_exercise", "body_part")
-        serializer = DefaultWorkoutReadSerializer(user_workouts, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_200_OK)
 
     except Exception as e:
         return JsonResponse(
@@ -1246,11 +1232,78 @@ def chat(request, date_str):
         )
 
 
-""" class DailyWorkoutView(APIView):
-    
+@api_view(["GET"])
+def get_default_workout(request):
+    if not request.user.is_authenticated:
+        return Response(
+            {"message": "You are not logged in!"}, status=status.HTTP_403_FORBIDDEN
+        )
+
+    default_workout = DefaultWorkout.objects.filter(user=request.user).first()
+    if default_workout:
+        serializer = DefaultWorkoutSerializer(default_workout)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(
+        {"message": "No default workout found!"}, status=status.HTTP_404_NOT_FOUND
+    )
+
+
+class DailyWorkoutView(APIView):
+
     def get(self, request, date_str):
-        date = datetime.strptime(date_str, "%Y-%m-%d")
-        workout = DailyWorkout.objects.filter(user=request.user, date=date.date())
-        if not workout:
-            default_workout = DefaultWorkout.objects.filter(user=request.user, day=date.day())
-            DailyWorkout.objects.create(user=request.user, date=date.date(), ) """
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "You are not logged in!"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        workout = DailyWorkout.objects.filter(user=request.user, date=date).first()
+        if workout:
+            return Response(
+                DailyWorkoutSerializer(workout).data, status=status.HTTP_200_OK
+            )
+        return Response(
+            {"message: No data found for the user on this date!"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    def post(self, request, date_str):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "You are not logged in!"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        serializer = DailyWorkoutSerializer(
+            data=request.data, context={"user": request.user, "date": date}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, date_str):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "You are not logged in!"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        daily_workout = DailyWorkout.objects.filter(
+            user=request.user, date=date
+        ).first()
+
+        if not daily_workout:
+            return Response(
+                {"message": "No such data exists!"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = DailyWorkoutSerializer(
+            daily_workout, data=request.data, partial=True
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Invalid data passed!"}, status=status.HTTP_400_BAD_REQUEST
+        )

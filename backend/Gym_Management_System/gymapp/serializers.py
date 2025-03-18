@@ -4,12 +4,8 @@ from .models import (
     User,
     UserSubscription,
     NutritionGoal,
-    Exercise,
     DefaultWorkout,
     DailyWorkout,
-    BodyPart,
-    WorkoutExercise,
-    DefaultWorkoutExercise,
 )
 
 
@@ -110,97 +106,41 @@ class NutritionGoalSerializer(serializers.ModelSerializer):
             "evening_snack",
             "dinner",
         ]
-        extra_args = {"user": {"required": False}}
-
-
-class ExerciseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Exercise
-        fields = ["id", "name"]
-
-
-class BodyPartSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BodyPart
-        fields = ["id", "name"]
-
-
-class WorkoutExercisesSerializer(serializers.ModelSerializer):
-    exercise = ExerciseSerializer()
-
-    class Meta:
-        model = WorkoutExercise
-        fields = ["id", "exercise", "status", "sets", "reps", "rest"]
+        extra_kargs = {"user": {"required": False}}
 
 
 class DailyWorkoutSerializer(serializers.ModelSerializer):
-    body_part = BodyPartSerializer()
-    workout_exercises = WorkoutExercisesSerializer(many=True)
-
     class Meta:
         model = DailyWorkout
-        fields = ["id", "user", "body_part", "date", "workout_exercises"]
-        read_only_fields = ["user"]
-
-
-""" class ExerciseJSONSerializer(serializers.Serializer):
-    exercise = serializers.CharField()
-    sets = serializers.JSONField(default=list)
-    reps = serializers.JSONField(default=list)
-    rest = serializers.JSONField(default=list) """
-
-
-class DefaultWorkoutExerciseSerializer(serializers.ModelSerializer):
-    exercise = serializers.CharField()
-
-    class Meta:
-        model = DefaultWorkoutExercise
-        fields = ["exercise", "sets", "reps", "rest"]
+        fields = ["id", "user", "exercise_data", "date"]
+        read_only_fields = ["user", "date"]
 
     def create(self, validated_data):
-        exercise_name = validated_data.pop("exercise")
-        exercise, _ = Exercise.objects.get_or_create(name=exercise_name)
-        default_workout = self.context.get("default_workout")
-        return DefaultWorkoutExercise.objects.create(
-            workout=default_workout, exercise=exercise, **validated_data
+        user = self.context["user"]
+        date = self.context["date"]
+        exercise_data = validated_data.get("exercise_data", {})
+
+        daily_workout, _ = DailyWorkout.objects.update_or_create(
+            user=user,
+            date=date,  # Ensure unique lookup
+            defaults={"exercise_data": exercise_data},  # Only update exercise_data
         )
+
+        return daily_workout
 
 
 class DefaultWorkoutSerializer(serializers.ModelSerializer):
-    day = serializers.CharField()
-    body_part = serializers.CharField()
-    workout = DefaultWorkoutExerciseSerializer(many=True, write_only=True)
-
     class Meta:
         model = DefaultWorkout
-        fields = ("day", "body_part", "workout")
+        fields = ["user", "exercise_data"]
+        read_only_fields = ["user"]
 
     def create(self, validated_data):
-        user = self.context.get("user")
-        day = validated_data.pop("day")
-        target_body_part = validated_data.pop("body_part")
-        exercise_data = validated_data.pop("workout")
-        day = day.lower()
-        body_part, _ = BodyPart.objects.get_or_create(name=target_body_part)
+        user = self.context["user"]
+        exercise_data = validated_data.get("exercise_data", {})
 
-        default_workout, created = DefaultWorkout.objects.update_or_create(
-            user=user, day=day, body_part=body_part
+        workout, _ = DefaultWorkout.objects.update_or_create(
+            user=user, defaults={"exercise_data": exercise_data}
         )
-        for ex_data in exercise_data:
-            exercise_name = ex_data.pop("exercise")
-            exercise_instance, _ = Exercise.objects.get_or_create(name=exercise_name)
-            DefaultWorkoutExercise.objects.update_or_create(
-                workout=default_workout, exercise=exercise_instance, defaults=ex_data
-            )
 
-        return default_workout
-
-
-class DefaultWorkoutReadSerializer(serializers.ModelSerializer):
-    workout = DefaultWorkoutExerciseSerializer(many=True, read_only=True, source="default_workout_exercise")
-    body_part = serializers.CharField(source="body_part.name")
-
-    class Meta:
-        model = DefaultWorkout
-        fields = ("day", "body_part", "workout")
-        
+        return workout
