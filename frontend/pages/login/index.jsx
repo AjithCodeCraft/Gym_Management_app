@@ -38,7 +38,7 @@ export default function LoginPage() {
       } else if (data.user_type === "trainer") {
         Cookies.set("user_id", data.user_id, { expires: 7, secure: true });
         Cookies.set("access_token", data.access, { expires: 7, secure: true });
-        router.push("trainer/dashboard");
+        router.push("/trainer");
       } else {
         throw new Error("Invalid user. Please contact support.");
       }

@@ -17,11 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-<<<<<<< Updated upstream
-from .serializers import LightweightUserSerializer, PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
-=======
-from .serializers import LightweightUserSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer,SleepLogSerializer
->>>>>>> Stashed changes
+from .serializers import LightweightUserSerializer,PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer,SleepLogSerializer
 from datetime import datetime    
 import json
 import os
@@ -931,7 +927,6 @@ def view_assigned_trainer_for_user(request, user_id):
     return Response({"assigned_trainers": data}, status=status.HTTP_200_OK)
 
 
-<<<<<<< Updated upstream
     
 
 @api_view(['GET'])
@@ -959,7 +954,7 @@ def user_payments_with_subscription(request, user_id):
         "payments": payment_data,
         "subscription": subscription_data
     }, status=status.HTTP_200_OK)
-=======
+
 @api_view(['GET', 'POST', 'PUT'])
 @permission_classes([IsAuthenticated])
 def sleep_log_list_create_update(request):
@@ -985,4 +980,41 @@ def sleep_log_list_create_update(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except SleepLog.DoesNotExist:
             return Response({'error': 'Sleep log not found'}, status=status.HTTP_404_NOT_FOUND)
->>>>>>> Stashed changes
+
+
+
+@api_view(['GET'])
+def get_user_by_firebase_id(request, firebase_id):
+    user = get_object_or_404(User, user_id=firebase_id)
+    serializer = UserSerializer(user)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
+@api_view(['GET'])
+def view_assigned_users_for_trainer(request, id):
+    """
+    Get all users assigned to a specific trainer.
+    """
+    try:
+        # Ensure the trainer exists
+        trainer = User.objects.get(id=id, user_type='trainer')
+    except User.DoesNotExist:
+        return Response({"detail": "Trainer not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Fetch assigned users for this trainer
+    assignments = TrainerAssignment.objects.filter(trainer=trainer).select_related('user')
+
+    # If no assignments found, return a 404 response
+    if not assignments.exists():
+        return Response({"detail": "No users assigned to this trainer."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Extract the users from assignments
+    users = [assignment.user for assignment in assignments]
+
+    # Serialize user data
+    serializer = UserSerializer(users, many=True)
+
+    return Response({"assigned_users": serializer.data}, status=status.HTTP_200_OK)
+

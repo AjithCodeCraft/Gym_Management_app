@@ -1,9 +1,5 @@
 from rest_framework import serializers
-<<<<<<< Updated upstream
 from .models import Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics
-=======
-from .models import Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics,SleepLog
->>>>>>> Stashed changes
 
 
 
@@ -91,7 +87,7 @@ class DefaultUserMetricsSerializer(serializers.ModelSerializer):
         return super().to_internal_value(filtered_data)
     
 
-<<<<<<< Updated upstream
+
 
 class PaymentSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.name', read_only=True)  # Get user's name
@@ -109,10 +105,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-=======
 class SleepLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = SleepLog
         fields = ['id', 'user', 'sleep_date', 'sleep_duration_hours', 'sleep_quality', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
->>>>>>> Stashed changes
