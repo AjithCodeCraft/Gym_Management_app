@@ -2,8 +2,13 @@ from django.urls import path
 
 from .views import (add_subscription, delete_all, delete_subscription, list_subscriptions, list_trainers, list_users,
     list_users_and_trainers, login_user, register_user, send_otp, send_password_reset_email, update_subscription,
+<<<<<<< Updated upstream
     update_trainer_details, update_user_details, user_payments_with_subscription, verify_otp, NutritionGoalView, get_user_profile,home_chat, assign_trainer,
     remove_trainer, view_assigned_trainer_for_user, view_assigned_trainers)
+=======
+    update_trainer_details, update_user_details, verify_otp, NutritionGoalView, get_user_profile,home_chat, assign_trainer,
+    remove_trainer, view_assigned_trainer_for_user, view_assigned_trainers,sleep_log_list_create_update)
+>>>>>>> Stashed changes
 
 urlpatterns = [
     path('send-otp/', send_otp, name='send-otp'), 
@@ -29,5 +34,11 @@ urlpatterns = [
     path('remove-trainer/<int:user_id>/', remove_trainer, name='remove-trainer'),
     path('view-assigned-trainers/', view_assigned_trainers, name='view-assigned-trainers'),
     path('assigned-trainer/<int:user_id>/', view_assigned_trainer_for_user, name='assigned_trainer_for_user'),
+<<<<<<< Updated upstream
     path('user-payments/<int:user_id>/', user_payments_with_subscription, name='user-payments-with-subscription'),
+=======
+    path('sleep-logs/', sleep_log_list_create_update, name='sleep-logs'),
+
+
+>>>>>>> Stashed changes
 ]
