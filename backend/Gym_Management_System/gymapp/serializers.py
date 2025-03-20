@@ -88,6 +88,7 @@ class DefaultUserMetricsSerializer(serializers.ModelSerializer):
     
 
 
+
 class PaymentSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.name', read_only=True)  # Get user's name
 
@@ -104,12 +105,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-
-
-class UserDetailsSerializer(serializers.ModelSerializer):
-
-
+class SleepLogSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['id', 'user_id', 'email', 'name', 'user_type', 'date_of_birth', 'gender', 
-                  'phone_number', 'profile_picture_url', 'is_active', 'created_at', 'updated_at']
+        model = SleepLog
+        fields = ['id', 'user', 'sleep_date', 'sleep_duration_hours', 'sleep_quality', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']

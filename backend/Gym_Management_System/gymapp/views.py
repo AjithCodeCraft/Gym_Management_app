@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 
 
 from .models import (OTPVerification, Payment, Subscription, TrainerProfile, User,
-                     UserSubscription, NutritionGoal, DefaultUserMetrics, TrainerAssignment)
+                     UserSubscription, NutritionGoal, DefaultUserMetrics, TrainerAssignment,SleepLog)
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
@@ -17,12 +17,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import LightweightUserSerializer, PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer
+from .serializers import LightweightUserSerializer,PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer,SleepLogSerializer
 from datetime import datetime    
 import json
 import os
 from django.http import JsonResponse
 from gradio_client import Client
+from rest_framework.permissions import IsAuthenticated
+
 
 
 
@@ -953,6 +955,32 @@ def user_payments_with_subscription(request, user_id):
         "subscription": subscription_data
     }, status=status.HTTP_200_OK)
 
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([IsAuthenticated])
+def sleep_log_list_create_update(request):
+    if request.method == 'GET':
+        sleep_logs = SleepLog.objects.filter(user=request.user)
+        serializer = SleepLogSerializer(sleep_logs, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = SleepLogSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'PUT':
+        try:
+            sleep_log = SleepLog.objects.get(user=request.user, sleep_date=request.data['sleep_date'])
+            serializer = SleepLogSerializer(sleep_log, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except SleepLog.DoesNotExist:
+            return Response({'error': 'Sleep log not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 @api_view(['GET'])
@@ -989,3 +1017,4 @@ def view_assigned_users_for_trainer(request, id):
     serializer = UserSerializer(users, many=True)
 
     return Response({"assigned_users": serializer.data}, status=status.HTTP_200_OK)
+
