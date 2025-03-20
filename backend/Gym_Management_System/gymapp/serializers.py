@@ -104,3 +104,12 @@ class PaymentSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+
+
+class UserDetailsSerializer(serializers.ModelSerializer):
+
+
+    class Meta:
+        model = User
+        fields = ['id', 'user_id', 'email', 'name', 'user_type', 'date_of_birth', 'gender', 
+                  'phone_number', 'profile_picture_url', 'is_active', 'created_at', 'updated_at']
