@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics,SleepLog
+from .models import Attendance, Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics,SleepLog
 
 
 
@@ -110,3 +110,11 @@ class SleepLogSerializer(serializers.ModelSerializer):
         model = SleepLog
         fields = ['id', 'user', 'sleep_date', 'sleep_duration_hours', 'sleep_quality', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Attendance
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at']

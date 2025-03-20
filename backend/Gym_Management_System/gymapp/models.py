@@ -220,13 +220,16 @@ class Attendance(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='attendance_records')
     status = models.CharField(max_length=20, choices=[('present', 'Present'), ('absent', 'Absent')], default='present')
-    check_in_time = models.DateTimeField(null=True, blank=True)
-    check_out_time = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    check_in_time = models.TimeField(null=True, blank=True)  # Stores only time
+    check_out_time = models.TimeField(null=True, blank=True)  # Stores only time
+    created_at = models.DateTimeField(auto_now_add=True)  # Auto stores the date
+    updated_at = models.DateTimeField(auto_now=True)  
+
+    class Meta:
+        unique_together = ('user', 'created_at')  # Ensures one attendance record per user per day
 
     def __str__(self):
-        return f"Attendance - {self.user.name} ({self.status})"
+        return f"Attendance - {self.user.name} ({self.created_at.date()}: {self.status})"
 
 
 class Payment(models.Model):

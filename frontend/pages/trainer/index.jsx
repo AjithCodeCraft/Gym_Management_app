@@ -103,7 +103,7 @@ const GymTrainerDashboard = () => {
     const absent = members.filter(m => m.checkInStatus === 'absent').length;
     
     setStats({
-      totalClients: members.length,
+      totalClients: users.length,
       checkedIn,
       checkedOut,
       absent
@@ -138,52 +138,28 @@ const GymTrainerDashboard = () => {
   // Fetch assigned users from API
   const fetchAssignedUsers = async (trainerId) => {
     if (!trainerId) return;
-    
+  
     try {
       const response = await api.get(`trainer/${trainerId}/assigned-users/`);
-      const users = response.data;
+      const users = response.data.assigned_users.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone_number,
+        gender: user.gender || "Not Specified",
+        isActive: user.is_active,
+        subscription: user.subscriptions.length > 0 ? user.subscriptions[0].subscription.name : "No Subscription",
+        startDate: user.subscriptions.length > 0 ? user.subscriptions[0].start_date : "N/A",
+        endDate: user.subscriptions.length > 0 ? user.subscriptions[0].end_date : "N/A",
+        status: user.subscriptions.length > 0 ? user.subscriptions[0].status : "Inactive"
+      }));
+  
       setAssignedUsers(users);
-      
-      // Generate sample attendance data using the assigned users
-      const attendanceObj = {};
-      const dates = [];
-      
-      // Create dates for the past 7 days
-      for (let i = 0; i < 7; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dateString = date.toISOString().split('T')[0];
-        dates.push(dateString);
-        
-        // Generate random attendance status for each user on each date
-        const statuses = ['checked-in', 'checked-out', 'absent'];
-        const userAttendance = users.map(user => {
-          const randStatus = statuses[Math.floor(Math.random() * statuses.length)];
-          const checkInTime = randStatus !== 'absent' ? 
-            new Date(date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A';
-          
-          return {
-            ...user,
-            checkInStatus: randStatus,
-            lastCheckIn: checkInTime
-          };
-        });
-        
-        attendanceObj[dateString] = userAttendance;
-      }
-      
-      setAvailableDates(dates);
-      setAttendanceData(attendanceObj);
-      
-      // Update stats for currently selected date
-      if (attendanceObj[selectedDate]) {
-        updateStats(selectedDate, attendanceObj[selectedDate]);
-      }
     } catch (error) {
       console.error('Error fetching assigned users:', error);
-      setLoading(false);
     }
   };
+  
 
   if (loading) {
     return (
@@ -294,58 +270,35 @@ const GymTrainerDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMembers.map((member) => (
-                          <tr key={member.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-medium">
-                                  {member.name.charAt(0)}
-                                </div>
-                                <div className="ml-3">
-                                  <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                                  <div className="text-xs text-gray-500">{member.gender.charAt(0).toUpperCase() + member.gender.slice(1)}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{member.email}</div>
-                              <div className="text-xs text-gray-500">{member.phone}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(member.checkInStatus)}`}>
-                                {member.checkInStatus === 'checked-in' ? 'Checked In' :
-                                 member.checkInStatus === 'checked-out' ? 'Checked Out' : 'Absent'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {member.lastCheckIn}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => markAttendance(member.id, 'checked-in')}
-                                >
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => markAttendance(member.id, 'checked-out')}
-                                >
-                                  <XCircle className="h-4 w-4 text-red-500" />
-                                </Button>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <MoreHorizontal className="h-5 w-5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
+  {assignedUsers.map((user) => (
+    <tr key={user.id} className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-medium">
+            {user.name.charAt(0)}
+          </div>
+          <div className="ml-3">
+            <div className="text-sm font-medium text-gray-900">{user.name}</div>
+            <div className="text-xs text-gray-500">{user.gender}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-900">{user.email}</div>
+        <div className="text-xs text-gray-500">{user.phone}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`px-2 py-1 text-xs rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {user.status}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-900">{user.subscription}</div>
+        <div className="text-xs text-gray-500">Valid: {user.startDate} - {user.endDate}</div>
+      </td>
+    </tr>
+  ))}
+</tbody>
                     </table>
                   </div>
                 </TabsContent>
