@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics
+from .models import Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics,SleepLog
 
 
 

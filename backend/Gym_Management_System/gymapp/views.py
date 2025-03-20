@@ -955,6 +955,7 @@ def user_payments_with_subscription(request, user_id):
         "subscription": subscription_data
     }, status=status.HTTP_200_OK)
 
+from django.core.exceptions import MultipleObjectsReturned
 @api_view(['GET', 'POST', 'PUT'])
 @permission_classes([IsAuthenticated])
 def sleep_log_list_create_update(request):
@@ -972,16 +973,18 @@ def sleep_log_list_create_update(request):
 
     elif request.method == 'PUT':
         try:
-            sleep_log = SleepLog.objects.get(user=request.user, sleep_date=request.data['sleep_date'])
-            serializer = SleepLogSerializer(sleep_log, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except SleepLog.DoesNotExist:
-            return Response({'error': 'Sleep log not found'}, status=status.HTTP_404_NOT_FOUND)
-
-
+            sleep_logs = SleepLog.objects.filter(user=request.user, sleep_date=request.data['sleep_date'])
+            if sleep_logs.exists():
+                sleep_log = sleep_logs.first()  # Update the first matching entry
+                serializer = SleepLogSerializer(sleep_log, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Sleep log not found'}, status=status.HTTP_404_NOT_FOUND)
+        except MultipleObjectsReturned:
+            return Response({'error': 'Multiple sleep logs found for the same date'}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 def get_user_by_firebase_id(request, firebase_id):
