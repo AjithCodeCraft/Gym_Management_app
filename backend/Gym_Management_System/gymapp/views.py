@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
 
-from .models import (OTPVerification, Payment, Subscription, TrainerProfile, User,
+from .models import (Attendance, OTPVerification, Payment, Subscription, TrainerProfile, User,
                      UserSubscription, NutritionGoal, DefaultUserMetrics, TrainerAssignment,SleepLog)
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.contrib.auth.hashers import make_password, check_password
@@ -17,7 +17,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import LightweightUserSerializer,PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer,SleepLogSerializer
+from .serializers import AttendanceSerializer, LightweightUserSerializer,PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer,SleepLogSerializer
 from datetime import datetime    
 import json
 import os
@@ -1021,3 +1021,107 @@ def view_assigned_users_for_trainer(request, id):
 
     return Response({"assigned_users": serializer.data}, status=status.HTTP_200_OK)
 
+
+
+class AttendanceCheckOutView(APIView):
+    """ API for trainers to check out a user with a given check-out time """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        trainer = request.user
+        if trainer.user_type != 'trainer':
+            return Response({"error": "Only trainers are allowed to check-out users"}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        check_out_time = request.data.get('check_out_time')
+
+        if not user_id or not check_out_time:
+            return Response({"error": "User ID and check-out time are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Validate check-out time format (HH:MM:SS)
+            check_out_time_obj = datetime.strptime(check_out_time, "%H:%M:%S").time()
+        except ValueError:
+            return Response({"error": "Invalid check-out time format. Use HH:MM:SS"}, status=status.HTTP_400_BAD_REQUEST)
+
+        today = datetime.today().date()
+
+        try:
+            attendance_record = Attendance.objects.get(user=user, created_at__date=today)
+        except Attendance.DoesNotExist:
+            return Response({"error": "No check-in record found for today"}, status=status.HTTP_404_NOT_FOUND)
+
+        if attendance_record.check_out_time:
+            return Response({"error": "User has already checked out today"}, status=status.HTTP_400_BAD_REQUEST)
+
+        attendance_record.check_out_time = check_out_time_obj
+        attendance_record.save()
+
+        return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_200_OK)
+
+
+
+class AttendanceListView(APIView):
+    """ API to get all attendance records for a specific user (Only accessible by trainers) """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        trainer = request.user
+        if trainer.user_type != 'trainer':
+            return Response({"error": "Only trainers are allowed to view attendance records"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        attendance_records = Attendance.objects.filter(user=user).order_by('-created_at')
+        serializer = AttendanceSerializer(attendance_records, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+class AttendanceCheckInView(APIView):
+    """ API for trainers to check in a user with a given check-in time """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        trainer = request.user
+        if trainer.user_type != 'trainer':
+            return Response({"error": "Only trainers are allowed to check-in users"}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        check_in_time = request.data.get('check_in_time')
+
+        if not user_id or not check_in_time:
+            return Response({"error": "User ID and check-in time are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Validate check-in time format (HH:MM:SS)
+            check_in_time_obj = datetime.strptime(check_in_time, "%H:%M:%S").time()
+        except ValueError:
+            return Response({"error": "Invalid check-in time format. Use HH:MM:SS"}, status=status.HTTP_400_BAD_REQUEST)
+
+        today = datetime.today().date()
+
+        # Check if the user has already checked in today
+        attendance_record, created = Attendance.objects.get_or_create(
+            user=user,
+            created_at__date=today,
+            defaults={'check_in_time': check_in_time_obj, 'status': 'present'}
+        )
+
+        if not created:
+            return Response({"error": "User has already checked in today"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED)

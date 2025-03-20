@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    add_subscription, delete_all, delete_subscription, get_user_by_firebase_id,
+    AttendanceCheckInView, AttendanceCheckOutView, AttendanceListView, add_subscription, delete_all, delete_subscription, get_user_by_firebase_id,
     list_subscriptions, list_trainers, list_users, list_users_and_trainers,
     login_user, register_user, send_otp, send_password_reset_email,
     update_subscription, update_trainer_details, update_user_details,
@@ -39,5 +39,7 @@ urlpatterns = [
     path('sleep-logs/', sleep_log_list_create_update, name='sleep-logs'),
     path('user/<str:firebase_id>/', get_user_by_firebase_id, name='get-user-by-firebase-id'),
     path('trainer/<int:id>/assigned-users/', view_assigned_users_for_trainer, name='assigned-users-for-trainer'),
-
+    path('attendance/check-in/', AttendanceCheckInView.as_view(), name='attendance-check-in'),
+    path('attendance/check-out/', AttendanceCheckOutView.as_view(), name='attendance-check-out'),
+    path('attendance/<int:user_id>/', AttendanceListView.as_view(), name='attendance-list'),
 ]
