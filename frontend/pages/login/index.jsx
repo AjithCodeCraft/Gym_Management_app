@@ -32,11 +32,11 @@ export default function LoginPage() {
       }
 
       if (data.user_type === "admin") {
-        Cookies.set("user_id", data.user_id, { expires: 7, secure: true });
+        Cookies.set("admin_id", data.user_id, { expires: 7, secure: true });
         Cookies.set("access_token", data.access, { expires: 7, secure: true });
         router.push("admin/dashboard");
       } else if (data.user_type === "trainer") {
-        Cookies.set("user_id", data.user_id, { expires: 7, secure: true });
+        Cookies.set("trainer_id", data.user_id, { expires: 7, secure: true });
         Cookies.set("access_token", data.access, { expires: 7, secure: true });
         router.push("/trainer");
       } else {
