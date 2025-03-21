@@ -112,7 +112,7 @@ const GymTrainerDashboard = () => {
 
   // Fetch trainer details from API
   useEffect(() => {
-    const firebaseId = Cookies.get('user_id'); // Read firebase_id from cookies
+    const firebaseId = Cookies.get('trainer_id'); // Read firebase_id from cookies
     if (firebaseId) {
       const fetchTrainerDetails = async () => {
         try {
@@ -122,43 +122,55 @@ const GymTrainerDashboard = () => {
           });
           setTrainerName(response.data.name);
           setTrainerId(response.data.id);
+          Cookies.set('id', response.data.id);
           
-          // Now fetch assigned users with the trainer ID
+          // Fetch assigned users initially
           await fetchAssignedUsers(response.data.id);
+
           setLoading(false);
+
+          // Set interval to fetch assigned users every 3 seconds
+          const intervalId = setInterval(() => {
+            fetchAssignedUsers(response.data.id);
+          }, 5000);
+
+          
+
         } catch (error) {
           console.error('Error fetching trainer details:', error);
           setLoading(false);
         }
       };
+
       fetchTrainerDetails();
     }
-  }, []);
+}, []);
 
-  // Fetch assigned users from API
-  const fetchAssignedUsers = async (trainerId) => {
-    if (!trainerId) return;
-  
-    try {
-      const response = await api.get(`trainer/${trainerId}/assigned-users/`);
-      const users = response.data.assigned_users.map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone_number,
-        gender: user.gender || "Not Specified",
-        isActive: user.is_active,
-        subscription: user.subscriptions.length > 0 ? user.subscriptions[0].subscription.name : "No Subscription",
-        startDate: user.subscriptions.length > 0 ? user.subscriptions[0].start_date : "N/A",
-        endDate: user.subscriptions.length > 0 ? user.subscriptions[0].end_date : "N/A",
-        status: user.subscriptions.length > 0 ? user.subscriptions[0].status : "Inactive"
-      }));
-  
-      setAssignedUsers(users);
-    } catch (error) {
-      console.error('Error fetching assigned users:', error);
-    }
-  };
+// Fetch assigned users from API every 3 seconds
+const fetchAssignedUsers = async (trainerId) => {
+  if (!trainerId) return;
+
+  try {
+    const response = await api.get(`trainer/${trainerId}/assigned-users/`);
+    const users = response.data.assigned_users.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone_number,
+      gender: user.gender || "Not Specified",
+      isActive: user.is_active,
+      subscription: user.subscriptions.length > 0 ? user.subscriptions[0].subscription.name : "No Subscription",
+      startDate: user.subscriptions.length > 0 ? user.subscriptions[0].start_date : "N/A",
+      endDate: user.subscriptions.length > 0 ? user.subscriptions[0].end_date : "N/A",
+      status: user.subscriptions.length > 0 ? user.subscriptions[0].status : "Inactive"
+    }));
+
+    setAssignedUsers(users);
+    sessionStorage.setItem("assignedUsers", JSON.stringify(users));
+  } catch (error) {
+    console.error('Error fetching assigned users:', error);
+  }
+};
   
 
   if (loading) {
