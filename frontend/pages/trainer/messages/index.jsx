@@ -116,7 +116,7 @@ const MessagesPage = () => {
                   <div className="flex gap-2">
                     <Input 
                       placeholder="Type a new message..." 
-                      className="flex-1" 
+                      className="flex-2" 
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                     />
