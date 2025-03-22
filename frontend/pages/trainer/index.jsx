@@ -1,31 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle, Activity, MoreHorizontal } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import TrainerSidebar from './TrainerSidebar';
 import Navbar from './Navbar';
+import Cookies from 'js-cookie';
+import api from "@/pages/api/axios";
 
 const GymTrainerDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
-
-  // Sample attendance data grouped by date
-  const [attendanceData, setAttendanceData] = useState({
-    '2025-03-01': [
-      { id: 1, name: 'John Doe', email: 'john@example.com', gender: 'male', phone: '+1234567890', checkInStatus: 'checked-in', lastCheckIn: '08:30 AM' },
-      { id: 2, name: 'Jane Smith', email: 'jane@example.com', gender: 'female', phone: '+0987654321', checkInStatus: 'absent', lastCheckIn: 'N/A' },
-    ],
-    '2025-03-02': [
-      { id: 1, name: 'John Doe', email: 'john@example.com', gender: 'male', phone: '+1234567890', checkInStatus: 'checked-in', lastCheckIn: '08:30 AM' },
-      { id: 3, name: 'Mike Johnson', email: 'mike@example.com', gender: 'male', phone: '+1239874560', checkInStatus: 'checked-out', lastCheckIn: '10:15 AM' },
-      { id: 4, name: 'Sara Williams', email: 'sara@example.com', gender: 'female', phone: '+3216549870', checkInStatus: 'checked-in', lastCheckIn: '09:45 AM' },
-    ],
-    '2025-03-03': [
-      { id: 5, name: 'Robert Chen', email: 'robert@example.com', gender: 'male', phone: '+4567891230', checkInStatus: 'checked-in', lastCheckIn: '07:50 AM' },
-      { id: 2, name: 'Jane Smith', email: 'jane@example.com', gender: 'female', phone: '+0987654321', checkInStatus: 'absent', lastCheckIn: 'N/A' },
-    ],
-  });
+  const [trainerName, setTrainerName] = useState('');
+  const [trainerId, setTrainerId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [attendanceData, setAttendanceData] = useState({});
+  const [assignedUsers, setAssignedUsers] = useState([]);
+  const [availableDates, setAvailableDates] = useState([]);
 
   // Get attendance for the selected date
   const filteredMembers = attendanceData[selectedDate] || [];
@@ -38,12 +29,12 @@ const GymTrainerDashboard = () => {
     { id: 5, time: '15:00 - 16:00', client: 'Mike Johnson', type: 'Personal', status: 'upcoming' }
   ];
 
-  const stats = {
-    totalClients: 12,
-    checkedIn: 8,
-    checkedOut: 2,
-    absent: 2
-  };
+  const [stats, setStats] = useState({
+    totalClients: 0,
+    checkedIn: 0,
+    checkedOut: 0,
+    absent: 0
+  });
 
   const salaryInfo = {
     base: 28000,
@@ -81,7 +72,7 @@ const GymTrainerDashboard = () => {
     return type === 'Personal' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
   };
 
-  // Function to mark attendance
+  // Function to mark attendance (client-side only)
   const markAttendance = (id, status) => {
     const updatedMembers = filteredMembers.map(member => {
       if (member.id === id) {
@@ -90,10 +81,14 @@ const GymTrainerDashboard = () => {
       }
       return member;
     });
-    setAttendanceData((prevData) => ({
+    
+    setAttendanceData(prevData => ({
       ...prevData,
       [selectedDate]: updatedMembers,
     }));
+    
+    // Update stats
+    updateStats(selectedDate, updatedMembers);
   };
 
   // Function to handle date change
@@ -101,9 +96,91 @@ const GymTrainerDashboard = () => {
     setSelectedDate(date);
   };
 
-  // Get list of available dates
-  const availableDates = Object.keys(attendanceData).sort((a, b) => new Date(b) - new Date(a));
+  // Function to update stats based on attendance data
+  const updateStats = (date, members) => {
+    const checkedIn = members.filter(m => m.checkInStatus === 'checked-in').length;
+    const checkedOut = members.filter(m => m.checkInStatus === 'checked-out').length;
+    const absent = members.filter(m => m.checkInStatus === 'absent').length;
+    
+    setStats({
+      totalClients: users.length,
+      checkedIn,
+      checkedOut,
+      absent
+    });
+  };
 
+  // Fetch trainer details from API
+  useEffect(() => {
+    const firebaseId = Cookies.get('trainer_id'); // Read firebase_id from cookies
+    if (firebaseId) {
+      const fetchTrainerDetails = async () => {
+        try {
+          setLoading(true);
+          const response = await api.get(`user/${firebaseId}/`, {
+            firebase_id: firebaseId
+          });
+          setTrainerName(response.data.name);
+          setTrainerId(response.data.id);
+          Cookies.set('id', response.data.id);
+          
+          // Fetch assigned users initially
+          await fetchAssignedUsers(response.data.id);
+
+          setLoading(false);
+
+          // Set interval to fetch assigned users every 3 seconds
+          const intervalId = setInterval(() => {
+            fetchAssignedUsers(response.data.id);
+          }, 5000);
+
+          
+
+        } catch (error) {
+          console.error('Error fetching trainer details:', error);
+          setLoading(false);
+        }
+      };
+
+      fetchTrainerDetails();
+    }
+}, []);
+
+// Fetch assigned users from API every 3 seconds
+const fetchAssignedUsers = async (trainerId) => {
+  if (!trainerId) return;
+
+  try {
+    const response = await api.get(`trainer/${trainerId}/assigned-users/`);
+    const users = response.data.assigned_users.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone_number,
+      gender: user.gender || "Not Specified",
+      isActive: user.is_active,
+      subscription: user.subscriptions.length > 0 ? user.subscriptions[0].subscription.name : "No Subscription",
+      startDate: user.subscriptions.length > 0 ? user.subscriptions[0].start_date : "N/A",
+      endDate: user.subscriptions.length > 0 ? user.subscriptions[0].end_date : "N/A",
+      status: user.subscriptions.length > 0 ? user.subscriptions[0].status : "Inactive"
+    }));
+
+    setAssignedUsers(users);
+    sessionStorage.setItem("assignedUsers", JSON.stringify(users));
+  } catch (error) {
+    console.error('Error fetching assigned users:', error);
+  }
+};
+  
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-orange-500"></div>
+      </div>
+    );
+  }
+  
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50">
       <TrainerSidebar />
@@ -116,10 +193,10 @@ const GymTrainerDashboard = () => {
               <div className="flex flex-col md:flex-row items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-medium">
-                    JD
+                    {trainerName.charAt(0)}{trainerName.split(' ')[1]?.charAt(0) || ''}
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Welcome, John Doe</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Welcome, {trainerName}</h1>
                     <p className="text-gray-500">Senior Fitness Trainer</p>
                   </div>
                 </div>
@@ -205,58 +282,35 @@ const GymTrainerDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredMembers.map((member) => (
-                          <tr key={member.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-medium">
-                                  {member.name.charAt(0)}
-                                </div>
-                                <div className="ml-3">
-                                  <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                                  <div className="text-xs text-gray-500">{member.gender.charAt(0).toUpperCase() + member.gender.slice(1)}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{member.email}</div>
-                              <div className="text-xs text-gray-500">{member.phone}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(member.checkInStatus)}`}>
-                                {member.checkInStatus === 'checked-in' ? 'Checked In' :
-                                 member.checkInStatus === 'checked-out' ? 'Checked Out' : 'Absent'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {member.lastCheckIn}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex justify-end gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => markAttendance(member.id, 'checked-in')}
-                                >
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => markAttendance(member.id, 'checked-out')}
-                                >
-                                  <XCircle className="h-4 w-4 text-red-500" />
-                                </Button>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <MoreHorizontal className="h-5 w-5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
+  {assignedUsers.map((user) => (
+    <tr key={user.id} className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-medium">
+            {user.name.charAt(0)}
+          </div>
+          <div className="ml-3">
+            <div className="text-sm font-medium text-gray-900">{user.name}</div>
+            <div className="text-xs text-gray-500">{user.gender}</div>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-900">{user.email}</div>
+        <div className="text-xs text-gray-500">{user.phone}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`px-2 py-1 text-xs rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {user.status}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-900">{user.subscription}</div>
+        <div className="text-xs text-gray-500">Valid: {user.startDate} - {user.endDate}</div>
+      </td>
+    </tr>
+  ))}
+</tbody>
                     </table>
                   </div>
                 </TabsContent>
@@ -266,7 +320,7 @@ const GymTrainerDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
                     <div className="md:col-span-2">
                       <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <h3 className="text-lg font-semibold mb-4">Today's Schedule (March 2, 2025)</h3>
+                        <h3 className="text-lg font-semibold mb-4">Today's Schedule ({new Date().toLocaleDateString('en-GB')})</h3>
                         <div className="space-y-4">
                           {schedule.map(session => (
                             <div key={session.id} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-100">

@@ -197,9 +197,12 @@ class Attendance(models.Model):
     check_out_time = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'created_at')  # Ensures one attendance record per user per day
 
     def __str__(self):
-        return f"Attendance - {self.user.name} ({self.status})"
+        return f"Attendance - {self.user.name} ({self.created_at.date()}: {self.status})"
 
 
 class Payment(models.Model):
@@ -283,7 +286,6 @@ class SleepLog(models.Model):
 
     def __str__(self):
         return f"Sleep Log for {self.user.name} on {self.sleep_date}"
-
 
 class Challenge(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

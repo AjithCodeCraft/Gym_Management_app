@@ -2,6 +2,7 @@ import random
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
 from .models import (
     OTPVerification,
@@ -14,12 +15,17 @@ from .models import (
     TrainerAssignment,
     DailyWorkout,
     DefaultWorkout,
+    TrainerAssignment,
+    SleepLog,    
 )
 from rest_framework.decorators import (
     api_view,
     permission_classes,
     authentication_classes,
 )
+
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+
 from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
 from rest_framework.response import Response
@@ -36,15 +42,16 @@ from .serializers import (
     NutritionGoalSerializer,
     DefaultWorkoutSerializer,
     DailyWorkoutSerializer,
+    SleepLogSerializer
 )
 from datetime import datetime
 import json
 import os
 from django.http import JsonResponse
 from gradio_client import Client
-from huggingface_hub import InferenceClient
 import re
-
+from rest_framework.permissions import IsAuthenticated
+from django.core.exceptions import MultipleObjectsReturned
 # Create your views here.
 
 
@@ -141,10 +148,11 @@ VALID_USER_TYPES = ["user", "trainer", "admin"]
 
 @api_view(["POST"])
 def register_user(request):
-    email = request.data.get("email")
-    name = request.data.get("name")
-    phone = request.data.get("phone_number")
-    user_type = request.data.get("user_type", "user")
+    email = request.data.get('email')
+    name = request.data.get('name')
+    phone = request.data.get('phone_number')
+    user_type = request.data.get('user_type', 'user')
+    gender = request.data.get('gender')
 
     # Set password based on user type
     if user_type == "admin":
@@ -219,7 +227,8 @@ def register_user(request):
             phone_number=phone,
             name=name,
             user_type=user_type,
-            password=make_password(password),  # Store hashed password
+            gender=gender,
+            password=make_password(password)  # Store hashed password
         )
 
         email_message = f"""
@@ -1152,7 +1161,7 @@ def view_assigned_trainer_for_user(request, user_id):
 
     return Response({"assigned_trainers": data}, status=status.HTTP_200_OK)
 
-
+  
 def clean_reps(value):
     """Convert reps values to integers while handling 's' and 'm' cases."""
     if isinstance(value, int):  # If it's already a number, keep it
@@ -1322,3 +1331,200 @@ class DailyWorkoutView(APIView):
         return Response(
             {"message": "Invalid data passed!"}, status=status.HTTP_400_BAD_REQUEST
         )
+    
+
+@api_view(['GET'])
+def user_payments_with_subscription(request, user_id):
+    if not request.user.is_authenticated:
+        return Response({"message": "You are not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Ensure only admin can access
+    if request.user.user_type != 'admin':
+        return Response({"message": "Unauthorized access"}, status=status.HTTP_403_FORBIDDEN)
+
+    user = get_object_or_404(User, id=user_id)
+    payments = Payment.objects.filter(user=user).order_by('-payment_date')
+
+    # Fetch the latest subscription correctly
+    user_subscription = UserSubscription.objects.filter(user=user).order_by('-created_at').first()
+    subscription = user_subscription.subscription if user_subscription else None
+
+    payment_data = PaymentSerializer(payments, many=True).data
+    subscription_data = SubscriptionSerializer(subscription).data if subscription else None
+
+    return Response({
+        "user_id": user.id,
+        "user_name": user.name,
+        "payments": payment_data,
+        "subscription": subscription_data
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([IsAuthenticated])
+def sleep_log_list_create_update(request):
+    if request.method == 'GET':
+        sleep_logs = SleepLog.objects.filter(user=request.user)
+        serializer = SleepLogSerializer(sleep_logs, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = SleepLogSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'PUT':
+        try:
+            sleep_logs = SleepLog.objects.filter(user=request.user, sleep_date=request.data['sleep_date'])
+            if sleep_logs.exists():
+                sleep_log = sleep_logs.first()  # Update the first matching entry
+                serializer = SleepLogSerializer(sleep_log, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Sleep log not found'}, status=status.HTTP_404_NOT_FOUND)
+        except MultipleObjectsReturned:
+            return Response({'error': 'Multiple sleep logs found for the same date'}, status=status.HTTP_400_BAD_REQUEST)
+
+          
+@api_view(['GET'])
+def get_user_by_firebase_id(request, firebase_id):
+    user = get_object_or_404(User, user_id=firebase_id)
+    serializer = UserSerializer(user)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def view_assigned_users_for_trainer(request, id):
+    """
+    Get all users assigned to a specific trainer.
+    """
+    try:
+        # Ensure the trainer exists
+        trainer = User.objects.get(id=id, user_type='trainer')
+    except User.DoesNotExist:
+        return Response({"detail": "Trainer not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Fetch assigned users for this trainer
+    assignments = TrainerAssignment.objects.filter(trainer=trainer).select_related('user')
+
+    # If no assignments found, return a 404 response
+    if not assignments.exists():
+        return Response({"detail": "No users assigned to this trainer."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Extract the users from assignments
+    users = [assignment.user for assignment in assignments]
+
+    # Serialize user data
+    serializer = UserSerializer(users, many=True)
+
+    return Response({"assigned_users": serializer.data}, status=status.HTTP_200_OK)
+
+
+
+class AttendanceCheckOutView(APIView):
+    """ API for trainers to check out a user with a given check-out time """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        trainer = request.user
+        if trainer.user_type != 'trainer':
+            return Response({"error": "Only trainers are allowed to check-out users"}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        check_out_time = request.data.get('check_out_time')
+
+        if not user_id or not check_out_time:
+            return Response({"error": "User ID and check-out time are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Validate check-out time format (HH:MM:SS)
+            check_out_time_obj = datetime.strptime(check_out_time, "%H:%M:%S").time()
+        except ValueError:
+            return Response({"error": "Invalid check-out time format. Use HH:MM:SS"}, status=status.HTTP_400_BAD_REQUEST)
+
+        today = datetime.today().date()
+
+        try:
+            attendance_record = Attendance.objects.get(user=user, created_at__date=today)
+        except Attendance.DoesNotExist:
+            return Response({"error": "No check-in record found for today"}, status=status.HTTP_404_NOT_FOUND)
+
+        if attendance_record.check_out_time:
+            return Response({"error": "User has already checked out today"}, status=status.HTTP_400_BAD_REQUEST)
+
+        attendance_record.check_out_time = check_out_time_obj
+        attendance_record.save()
+
+        return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_200_OK)
+
+
+
+class AttendanceListView(APIView):
+    """ API to get all attendance records for a specific user (Only accessible by trainers) """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        trainer = request.user
+        if trainer.user_type != 'trainer':
+            return Response({"error": "Only trainers are allowed to view attendance records"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        attendance_records = Attendance.objects.filter(user=user).order_by('-created_at')
+        serializer = AttendanceSerializer(attendance_records, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+class AttendanceCheckInView(APIView):
+    """ API for trainers to check in a user with a given check-in time """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        trainer = request.user
+        if trainer.user_type != 'trainer':
+            return Response({"error": "Only trainers are allowed to check-in users"}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        check_in_time = request.data.get('check_in_time')
+
+        if not user_id or not check_in_time:
+            return Response({"error": "User ID and check-in time are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Validate check-in time format (HH:MM:SS)
+            check_in_time_obj = datetime.strptime(check_in_time, "%H:%M:%S").time()
+        except ValueError:
+            return Response({"error": "Invalid check-in time format. Use HH:MM:SS"}, status=status.HTTP_400_BAD_REQUEST)
+
+        today = datetime.today().date()
+
+        # Check if the user has already checked in today
+        attendance_record, created = Attendance.objects.get_or_create(
+            user=user,
+            created_at__date=today,
+            defaults={'check_in_time': check_in_time_obj, 'status': 'present'}
+        )
+
+        if not created:
+            return Response({"error": "User has already checked in today"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED)

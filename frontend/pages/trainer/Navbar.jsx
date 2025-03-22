@@ -1,10 +1,18 @@
 import React from 'react';
 import { Dumbbell, Search, Bell, MessageCircle } from 'lucide-react';
-import { useRouter } from 'next/router'; // Import useRouter from next/router
+import { useRouter } from 'next/router';
 import Link from 'next/link';
+import AvatarIcon from './profile/AvatarIcon';
 
 const Navbar = ({ searchQuery, setSearchQuery }) => {
-  const router = useRouter(); // Use the useRouter hook
+  const router = useRouter();
+  
+  // Dummy user data - in a real app, this would come from authentication context
+  const currentUser = {
+    name: "John Doe",
+    user_type: "trainer",
+    profile_picture_url: null
+  };
 
   return (
     <div className="bg-white shadow z-10">
@@ -14,7 +22,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
             <Dumbbell className="h-8 w-8 text-orange-500" />
             <h1 className="ml-2 text-xl font-bold">FitPro</h1>
           </div>
-
+          
           <div className="flex-1 px-2 flex justify-end sm:justify-between">
             <div className="hidden sm:flex max-w-lg w-full">
               <div className="w-full relative">
@@ -30,22 +38,22 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
                 />
               </div>
             </div>
-
+            
             <div className="flex items-center">
               <button className="p-1 text-gray-400 rounded-full hover:bg-gray-100 focus:outline-none mr-4">
                 <Bell className="h-6 w-6" />
               </button>
               <Link href="/trainer/messages" className="inline-block">
-    <button 
-        className="p-1 text-gray-400 rounded-full hover:bg-gray-100 focus:outline-none mr-4 flex items-center gap-1"
-    >
-        Messages
-        <MessageCircle className="h-6 w-6" />
-    </button>
-</Link>
-              <div className="md:hidden w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white">
-                JD
-              </div>
+                <button
+                  className="p-1 text-gray-400 rounded-full hover:bg-gray-100 focus:outline-none mr-4 flex items-center gap-1"
+                >
+                  Messages
+                  <MessageCircle className="h-6 w-6" />
+                </button>
+              </Link>
+              
+              {/* Replace the avatar div with our new component */}
+              <AvatarIcon user={currentUser} />
             </div>
           </div>
         </div>
