@@ -34,11 +34,11 @@ export type DailyWorkoutType = {
 
 export type WorkoutPlan = Record<string, DailyWorkoutType>;
 
-export type dailyWorkoutType = Record<number, DailyWorkoutType>; // TimeStamp and Workout for the day
+export type DailyWorkoutRecord = Record<number, DailyWorkoutType>; // TimeStamp and Workout for the day
 
 export default function Gym() {
-   const [defaultWorkouts, setWorkouts] = useState<WorkoutPlan>({});
-   const [dailyWorkouts, setDailyWorkouts] = useState<dailyWorkoutType>({});
+   const [defaultWorkouts, setDefaultWorkouts] = useState<WorkoutPlan>({});
+   const [dailyWorkouts, setDailyWorkouts] = useState<DailyWorkoutRecord>({});
    const [selectedDate, setSelectedDate] = useState(new Date());
    const [isChatbotVisible, setIsChatbotVisible] = useState(false);
    const [loading, setLoading] = useState<boolean>(true);
@@ -64,7 +64,7 @@ export default function Gym() {
 
       const activeWorkout = dailyWorkouts[timeStamp];
       const formattedWorkouts = activeWorkout
-         ? activeWorkout.workout.map((exercise, index) => ({
+         ? activeWorkout?.workout?.map((exercise, index) => ({
               id: `${index}`,
               part: activeWorkout.body_part,
               exercise: exercise.exercise,
@@ -83,7 +83,7 @@ export default function Gym() {
       selectedDate,
       defaultWorkouts,
       dailyWorkouts,
-      setWorkouts,
+      setDefaultWorkouts,
       setWorkoutErrorMessage,
       setDailyWorkouts,
       setLoading,
@@ -149,6 +149,9 @@ export default function Gym() {
                onClose={() => setIsChatbotVisible(false)}
                onAddWorkout={addWorkoutPlan}
                setLoading={setLoading}
+               setDailyWorkouts={setDailyWorkouts}
+               setDefaultWorkouts={setDefaultWorkouts}
+               selectedDate={selectedDate}
             />
          </Modal>
       </SafeAreaView>

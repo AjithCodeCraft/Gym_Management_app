@@ -1,9 +1,9 @@
 import { apiAuth } from "@/api/axios";
 import { Dispatch, SetStateAction, useEffect } from "react";
-import { dailyWorkoutType, Workout, WorkoutPlan } from "@/app/(tabs)/workout";
+import { DailyWorkoutRecord, Workout, WorkoutPlan } from "@/app/(tabs)/workout";
 import axios from "axios";
 
-export const processData = (data: any, selectedDate: Date): dailyWorkoutType => {
+export const processData = (data: any, selectedDate: Date): DailyWorkoutRecord => {
    if (!data) return data;
 
    if ("exercise_data" in data) {
@@ -38,10 +38,10 @@ export const isSame = (d1: Date, d2: Date): boolean =>
 const useExerciseData = async (
    selectedDate: Date,
    defaultWorkouts: WorkoutPlan,
-   dailyWorkout: dailyWorkoutType,
+   dailyWorkout: DailyWorkoutRecord,
    setDefaultWorkouts: Dispatch<SetStateAction<WorkoutPlan>>,
    setWorkoutErrorMessage: Dispatch<SetStateAction<string>>,
-   setDailyWorkouts: Dispatch<SetStateAction<dailyWorkoutType>>,
+   setDailyWorkouts: Dispatch<SetStateAction<DailyWorkoutRecord>>,
    setLoading: Dispatch<SetStateAction<boolean>>,
    addWorkoutPlan: () => void
 ) => {

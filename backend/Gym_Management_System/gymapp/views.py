@@ -42,7 +42,8 @@ import json
 import os
 from django.http import JsonResponse
 from gradio_client import Client
-
+from huggingface_hub import InferenceClient
+import re
 
 # Create your views here.
 
@@ -1152,12 +1153,14 @@ def view_assigned_trainer_for_user(request, user_id):
     return Response({"assigned_trainers": data}, status=status.HTTP_200_OK)
 
 
-import json
-from django.http import JsonResponse
-from rest_framework.decorators import api_view
-from gradio_client import Client
-
-client = Client("alameenas/gym_assastant")
+def clean_reps(value):
+    """Convert reps values to integers while handling 's' and 'm' cases."""
+    if isinstance(value, int):  # If it's already a number, keep it
+        return value
+    if isinstance(value, str):  # If it's a string, clean it
+        cleaned_value = re.sub(r"[sm]", "", value)  # Remove 's' or 'm'
+        return int(cleaned_value) if cleaned_value.isdigit() else None
+    return None
 
 
 @api_view(["POST"])
@@ -1168,15 +1171,14 @@ def chat(request):
         )
     try:
         # Get user input from request
-        req_message = request.data.get("message") or "nil"
+        req_message = (
+            request.data.get("message") or "6-day workout plan monday to saturday"
+        )
         weight = request.data.get("weight")
         height = request.data.get("height")
         age = request.data.get("age")
         target = request.data.get("target")
 
-        # Validate input
-        if not req_message:
-            return JsonResponse({"error": "Message is required"}, status=400)
         if not all([weight, height, age, target]):
             return JsonResponse(
                 {"error": "Weight, height, age, and target are required"}, status=400
@@ -1184,19 +1186,39 @@ def chat(request):
 
         # Enforce JSON-only response with personalized details
         system_instruction = (
-            "You are a gym assistant. Based on the user's details, generate a customized 6-day workout plan.\n"
-            "User details:\n"
-            f"- Age: {age} years\n"
-            f"- Height: {height} cm\n"
-            f"- Weight: {weight} kg\n"
-            f"- Target: {target} (e.g., weight loss, muscle gain, endurance, etc.)\n"
-            "Respond strictly in JSON format without explanations. Example format:\n"
-            '{\n  "week": {\n    "Monday": {\n      "day": "Monday",\n      "body_part": "Upper Body",\n      "workout": [{exercise: "Bench Press", sets: 4, reps: 8, rest: 90,}, {exercise: "Cable Flyes", sets: 3, reps: 10, rest: 60,}]\n    }\n  }\n}'
+            "You are a gym assistant. Generate a strict 6-day workout plan (Monday-Saturday) "
+            "based on the user's details in **valid JSON format only**.\n\n"
+            "**STRICT JSON RESPONSE FORMAT:**\n"
+            "{"
+            '  "week": {'
+            '    "Monday": {'
+            '      "day": "Monday",'
+            '      "body_part": "Upper Body",'
+            '      "workout": ['
+            '        {"exercise": "Bench Press", "sets": "4", "reps": "8", "rest": "90"},'
+            '        {"exercise": "Cable Flyes", "sets": "3", "reps": "10", "rest": "60"}'
+            "      ]"
+            "    },"
+            '    "Tuesday": { ... },'
+            '    "Wednesday": { ... },'
+            "  }"
+            "}\n"
+            "DO NOT include any explanations, comments, or markdown formatting.\n"
+            "ONLY return a valid JSON object."
         )
+
+        user_details = {
+            "Age": age,
+            "Height": f"{height} cm",
+            "Weight": f"{weight} kg",
+            "Target": target,  # Example: "weight loss", "muscle gain"
+        }
+
+        prompt = json.dumps(user_details, indent=2)
 
         # Call the AI model
         result = client.predict(
-            req_message,  # User input (e.g., "6-day workout plan")
+            prompt,  # User input (e.g., "6-day workout plan")
             system_instruction,  # Personalized AI instruction
             2048,  # max_tokens
             0.7,  # temperature
@@ -1204,23 +1226,16 @@ def chat(request):
             api_name="/chat",
         )
 
-        # Ensure result is JSON formatted
-        if isinstance(result, str):
-            try:
-                result = json.loads(result)  # Convert AI response to JSON
-            except json.JSONDecodeError as e:
-                return JsonResponse(
-                    {
-                        "error": "AI response is not valid JSON",
-                        "details": str(e),
-                        "raw_response": result,
-                    },
-                    status=500,
-                )
+        result = result.strip("'").replace("'", '"')
+
+        result = re.sub(r"(\d+)([a-zA-Z]+)", r"\1", result)
+        print(result)
+        result = json.loads(result)
 
         serializer = DefaultWorkoutSerializer(
             data={"exercise_data": result}, context={"user": request.user}
         )
+
         if serializer.is_valid():
             serializer.save()
 

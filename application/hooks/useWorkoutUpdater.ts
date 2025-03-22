@@ -1,8 +1,8 @@
 import { apiAuth } from "@/api/axios";
 import { Dispatch, SetStateAction } from "react";
-import { dailyWorkoutType } from "@/app/(tabs)/workout";
+import { DailyWorkoutRecord } from "@/app/(tabs)/workout";
 
-export const updateDailyWorkoutData = async (selectedDate: Date, dailyWorkout: dailyWorkoutType) => {
+export const updateDailyWorkoutData = async (selectedDate: Date, dailyWorkout: DailyWorkoutRecord) => {
    const date = selectedDate.toLocaleDateString("en-ca");
    try {
       const data = {
@@ -15,9 +15,9 @@ export const updateDailyWorkoutData = async (selectedDate: Date, dailyWorkout: d
 };
 
 const useWorkoutUpdater = async (
-   setDailyWorkout: Dispatch<SetStateAction<dailyWorkoutType>>,
+   setDailyWorkout: Dispatch<SetStateAction<DailyWorkoutRecord>>,
    setCurrentStatus: Dispatch<SetStateAction<boolean>>,
-   dailyWorkout: dailyWorkoutType,
+   dailyWorkout: DailyWorkoutRecord,
    selectedDate: Date,
    index: number,
    currentStatus: boolean

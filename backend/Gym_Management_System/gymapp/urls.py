@@ -81,6 +81,8 @@ urlpatterns = [
     path("workout-plan/", chat, name="workout_chat"),
     path("get-workout-plan/", get_default_workout, name="get_workout_chat"),
     path(
-        "daily-workout/<str:date_str>/", DailyWorkoutView.as_view(), name="daily_workout"
+        "daily-workout/<str:date_str>/",
+        DailyWorkoutView.as_view(),
+        name="daily_workout",
     ),
 ]

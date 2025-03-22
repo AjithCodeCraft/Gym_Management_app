@@ -1,7 +1,7 @@
 import React, { SetStateAction, useState, Dispatch, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { isSame, isBefore, isAfter } from "@/hooks/useExerciseData";
-import { dailyWorkoutType } from "@/app/(tabs)/workout";
+import { DailyWorkoutRecord } from "@/app/(tabs)/workout";
 import useWorkoutUpdater from "@/hooks/useWorkoutUpdater";
 
 interface WorkoutItemProps {
@@ -12,8 +12,8 @@ interface WorkoutItemProps {
    rest: number;
    status: boolean;
    selectedDate: Date;
-   dailyWorkout: dailyWorkoutType;
-   setDailyWorkout: Dispatch<SetStateAction<dailyWorkoutType>>;
+   dailyWorkout: DailyWorkoutRecord;
+   setDailyWorkout: Dispatch<SetStateAction<DailyWorkoutRecord>>;
 }
 
 export default function WorkoutItem({
