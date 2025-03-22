@@ -28,6 +28,11 @@ from .views import (
     chat,
     sleep_log_list_create_update,
     view_assigned_users_for_trainer,
+    user_payments_with_subscription,
+    get_user_by_firebase_id,
+    AttendanceCheckInView,
+    AttendanceCheckOutView,
+    AttendanceListView,
 )
 
 urlpatterns = [
@@ -87,11 +92,35 @@ urlpatterns = [
         DailyWorkoutView.as_view(),
         name="daily_workout",
     ),
-    path('user-payments/<int:user_id>/', user_payments_with_subscription, name='user-payments-with-subscription'),
-    path('sleep-logs/', sleep_log_list_create_update, name='sleep-logs'),
-    path('user/<str:firebase_id>/', get_user_by_firebase_id, name='get-user-by-firebase-id'),
-    path('trainer/<int:id>/assigned-users/', view_assigned_users_for_trainer, name='assigned-users-for-trainer'),
-    path('attendance/check-in/', AttendanceCheckInView.as_view(), name='attendance-check-in'),
-    path('attendance/check-out/', AttendanceCheckOutView.as_view(), name='attendance-check-out'),
-    path('attendance/<int:user_id>/', AttendanceListView.as_view(), name='attendance-list'),
+    path(
+        "user-payments/<int:user_id>/",
+        user_payments_with_subscription,
+        name="user-payments-with-subscription",
+    ),
+    path("sleep-logs/", sleep_log_list_create_update, name="sleep-logs"),
+    path(
+        "user/<str:firebase_id>/",
+        get_user_by_firebase_id,
+        name="get-user-by-firebase-id",
+    ),
+    path(
+        "trainer/<int:id>/assigned-users/",
+        view_assigned_users_for_trainer,
+        name="assigned-users-for-trainer",
+    ),
+    path(
+        "attendance/check-in/",
+        AttendanceCheckInView.as_view(),
+        name="attendance-check-in",
+    ),
+    path(
+        "attendance/check-out/",
+        AttendanceCheckOutView.as_view(),
+        name="attendance-check-out",
+    ),
+    path(
+        "attendance/<int:user_id>/",
+        AttendanceListView.as_view(),
+        name="attendance-list",
+    ),
 ]

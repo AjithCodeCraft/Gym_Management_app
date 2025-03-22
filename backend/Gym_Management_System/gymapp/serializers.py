@@ -9,8 +9,7 @@ from .models import (
     Attendance,
     Payment,
     Subscription,
-    DefaultUserMetrics,
-    SleepLog
+    SleepLog,
 )
 
 
@@ -149,36 +148,45 @@ class DefaultWorkoutSerializer(serializers.ModelSerializer):
         )
 
         return workout
- 
+
 
 class PaymentSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.name', read_only=True)  # Get user's name
+    user_name = serializers.CharField(
+        source="user.name", read_only=True
+    )  # Get user's name
 
     class Meta:
         model = Payment
         fields = [
-            'id',
-            'user', 
-            'user_name',  
-            'amount',
-            'payment_date',
-            'payment_method',
-            'status',
-            'created_at',
-            'updated_at',
+            "id",
+            "user",
+            "user_name",
+            "amount",
+            "payment_date",
+            "payment_method",
+            "status",
+            "created_at",
+            "updated_at",
         ]
-        
-        
+
+
 class SleepLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = SleepLog
-        fields = ['id', 'user', 'sleep_date', 'sleep_duration_hours', 'sleep_quality', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
-
+        fields = [
+            "id",
+            "user",
+            "sleep_date",
+            "sleep_duration_hours",
+            "sleep_quality",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "user", "created_at", "updated_at"]
 
 
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attendance
-        fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at']
+        fields = "__all__"
+        read_only_fields = ["created_at", "updated_at"]
