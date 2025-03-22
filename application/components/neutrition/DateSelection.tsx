@@ -2,6 +2,7 @@ import { View, TouchableOpacity, Text } from "react-native";
 import { styles } from "@/app/(tabs)/nutrition";
 import { Dispatch, SetStateAction, useState } from "react";
 import { mealsType } from "@/utils/nutrirtionUtils";
+import { workoutStyles } from "@/app/(tabs)/workout";
 
 type DateSelectionType = {
     showDateSelector: boolean;
@@ -124,6 +125,45 @@ const DateSelection = ({ setCurrentDate, setMeals, setShowDateSelector, setWeekS
             )}
         </>
     );
+}
+
+type DaySelectionProps = {
+    selectedDate: Date;
+    setSelectedDate: Dispatch<SetStateAction<Date>>;
+}
+
+export const DaySeletion = ({ selectedDate, setSelectedDate }: DaySelectionProps) => {
+    const goToNextDay = () => {
+        setSelectedDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setDate(newDate.getDate() + 1);
+            return newDate;
+        });
+    };
+    const goToPrevDay = () => {
+        setSelectedDate(prev => {
+            const newDate = new Date(prev);
+            newDate.setDate(newDate.getDate() - 1);
+            return newDate;
+        });
+    };
+    return (
+    <View style={workoutStyles.dateContainer}>
+        <TouchableOpacity onPress={goToPrevDay}>
+            <Text style={styles.navButtonText}>◀</Text>
+        </TouchableOpacity>
+        <Text style={styles.dateText}>
+            {selectedDate.toLocaleDateString("en-US", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+            })}
+        </Text>
+        <TouchableOpacity onPress={goToNextDay}>
+            <Text style={styles.navButtonText}>▶</Text>
+        </TouchableOpacity>
+    </View>
+    )
 }
 
 export default DateSelection;

@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-const API_BASE_URL = "https://4629-2409-40f3-20d0-aa58-317d-bd9c-46b5-4059.ngrok-free.app/api" || 'http://127.0.0.1:8000'; // Replace with your actual backend URL
+const API_BASE_URL = " http://localhost:8000/api"; // Replace with your actual backend URL
+
 
 const api = axios.create({
     baseURL: API_BASE_URL,
