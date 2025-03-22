@@ -6,6 +6,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from 'expo-constants';
 import api from '../api/axios';
+import LoadingSpinner from "@/components/LoadingSpinner";
 const API_URL = Constants.expoConfig?.extra?.API_URL;
 
 export default function LoginPage() {
@@ -59,8 +60,8 @@ export default function LoginPage() {
   if (isLoggedIn) {
     return <Redirect href="/(tabs)/home" />;
   }
-
-  return (
+  
+  return isLoading ? <LoadingSpinner /> : (
     <View style={styles.container}>
       {/* Left Side - Login Form */}
       <View style={styles.loginForm}>
