@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+
     DailyWorkoutView,
     add_subscription,
     delete_all,
@@ -33,9 +34,13 @@ from .views import (
     AttendanceCheckInView,
     AttendanceCheckOutView,
     AttendanceListView,
+    ChatMessageListView, 
+    SendMessageView
+
 )
 
 urlpatterns = [
+
     path("send-otp/", send_otp, name="send-otp"),
     path("verify-otp/", verify_otp, name="verify-otp"),
     path("register/", register_user, name="register-user"),
@@ -123,4 +128,8 @@ urlpatterns = [
         AttendanceListView.as_view(),
         name="attendance-list",
     ),
+    path('trainers/<int:trainer_id>/', get_trainer_by_id, name='get_trainer_by_id'),
+    path("messages/<int:user_id>/<int:trainer_id>/", ChatMessageListView.as_view(), name="get_messages"),
+    path("messages/send/", SendMessageView.as_view(), name="send_message"),
 ]
+
