@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Attendance, Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics,SleepLog
+from .models import Attendance, ChatMessage, Payment, Subscription, User, UserSubscription, NutritionGoal, DefaultUserMetrics,SleepLog
 
 
 
@@ -10,8 +10,18 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 
 
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Attendance
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at']
+
+
+
 class UserSubscriptionSerializer(serializers.ModelSerializer):
     subscription = SubscriptionSerializer(read_only=True)
+   
 
     class Meta:
         model = UserSubscription
@@ -20,11 +30,12 @@ class UserSubscriptionSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     subscriptions = UserSubscriptionSerializer(many=True, read_only=True)
+    attendance = AttendanceSerializer(read_only = True)
 
     class Meta:
         model = User
         fields = ['id', 'user_id', 'email', 'name', 'user_type', 'date_of_birth', 'gender', 
-                  'phone_number', 'profile_picture_url', 'is_active', 'created_at', 'updated_at', 'subscriptions']
+                  'phone_number', 'profile_picture_url', 'is_active', 'created_at', 'updated_at', 'attendance','subscriptions']
 
 
 class LightweightUserSerializer(serializers.ModelSerializer):
@@ -37,7 +48,7 @@ class LightweightUserSerializer(serializers.ModelSerializer):
             'id','user_id' ,'name', 'email', 'user_type', 
             'gender', 'phone_number', 
             'is_active', 'created_at', 
-            'subscriptions', 'trainer_profile'
+            'subscriptions', 'trainer_profile','date_of_birth'
         ]
 
     def get_subscriptions(self, obj):
@@ -60,7 +71,9 @@ class LightweightUserSerializer(serializers.ModelSerializer):
             return {
                 'specialization': obj.trainer_profile.specialization,
                 'experience' : obj.trainer_profile.experience_years,
-                'salary':obj.trainer_profile.salary
+                'salary':obj.trainer_profile.salary,
+                'availability' : obj.trainer_profile.availability,
+                'qualifications': obj.trainer_profile.qualifications
             }
         return None
 
@@ -118,3 +131,13 @@ class AttendanceSerializer(serializers.ModelSerializer):
         model = Attendance
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
+
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    sender_username = serializers.CharField(source="sender.username", read_only=True)
+    receiver_username = serializers.CharField(source="receiver.username", read_only=True)
+
+    class Meta:
+        model = ChatMessage
+        fields = ["id", "sender", "receiver", "sender_username", "receiver_username", "message", "timestamp"]

@@ -5,19 +5,19 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
 
-from .models import (Attendance, OTPVerification, Payment, Subscription, TrainerProfile, User,
+from .models import (Attendance, ChatMessage, OTPVerification, Payment, Subscription, TrainerProfile, User,
                      UserSubscription, NutritionGoal, DefaultUserMetrics, TrainerAssignment,SleepLog)
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status,generics
 from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
-from .serializers import AttendanceSerializer, LightweightUserSerializer,PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer,SleepLogSerializer
+from .serializers import AttendanceSerializer, ChatMessageSerializer, LightweightUserSerializer,PaymentSerializer, SubscriptionSerializer, UserSerializer, NutritionGoalSerializer, DefaultUserMetricsSerializer,SleepLogSerializer
 from datetime import datetime    
 import json
 import os
@@ -485,7 +485,7 @@ def delete_all(request):
 
 @api_view(['GET'])
 def list_users_and_trainers(request):
-    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
+    if not request.user.is_authenticated:
         return Response({"detail": "You do not have permission to perform this action."},
                         status=status.HTTP_403_FORBIDDEN)
 
@@ -640,52 +640,60 @@ def update_user_details(request):
         return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['PUT'])
-def update_trainer_details(request):
-    if not request.user.is_authenticated or getattr(request.user, "user_type", "") != "admin":
-        return Response({"detail": "You do not have permission to perform this action."},
-                        status=status.HTTP_403_FORBIDDEN)
+class UpdateTrainerDetails(APIView):
+    def put(self, request):
+        if not request.user.is_authenticated:
+            return Response({"detail": "You do not have permission to perform this action."},
+                            status=status.HTTP_403_FORBIDDEN)
 
-    email = request.data.get('email')
-    specialization = request.data.get('specialization')
-    experience_years = request.data.get('experience_years')
-    qualifications = request.data.get('qualifications')
-    availability = request.data.get('availability')
-    salary = request.data.get('salary')
-    is_active = request.data.get('is_active')  # Enable or disable trainer
-    phone_number = request.data.get('phone_number')  # Update phone number
+        email = request.data.get('email')
+        specialization = request.data.get('specialization')
+        experience_years = request.data.get('experience_years')
+        qualifications = request.data.get('qualifications')
+        availability = request.data.get('availability')
+        salary = request.data.get('salary')
+        is_active = request.data.get('is_active')  # Enable or disable trainer
+        phone_number = request.data.get('phone_number')  # Update phone number
+        gender = request.data.get('gender')  # Update gender
+        name = request.data.get('name')  # Update name
+        date_of_birth = request.data.get('date_of_birth')  # Update date of birth
 
-    try:
-        user = User.objects.get(email=email, user_type='trainer')
-        trainer_profile = TrainerProfile.objects.get(user=user)
+        try:
+            user = User.objects.get(email=email, user_type='trainer')
+            trainer_profile = TrainerProfile.objects.get(user=user)
 
-        if is_active is not None:
-            user.is_active = is_active
-        if phone_number:
-            user.phone_number = phone_number
-        user.save()
+            if is_active is not None:
+                user.is_active = is_active
+            if phone_number:
+                user.phone_number = phone_number
+            if name:
+                user.name = name
+            if date_of_birth:
+                user.date_of_birth = date_of_birth
+            if gender:
+                user.gender = gender
+            user.save()
 
-        if specialization:
-            trainer_profile.specialization = specialization
-        if experience_years:
-            trainer_profile.experience_years = experience_years
-        if qualifications:
-            trainer_profile.qualifications = qualifications
-        if availability:
-            trainer_profile.availability = availability
-        if salary:
-            trainer_profile.salary = salary
+            if specialization:
+                trainer_profile.specialization = specialization
+            if experience_years:
+                trainer_profile.experience_years = experience_years
+            if qualifications:
+                trainer_profile.qualifications = qualifications
+            if availability:
+                trainer_profile.availability = availability
+            if salary:
+                trainer_profile.salary = salary
 
-        trainer_profile.save()
+            trainer_profile.save()
 
-        return Response({'message': 'Trainer details updated successfully'}, status=status.HTTP_200_OK)
-    except User.DoesNotExist:
-        return Response({'error': 'Trainer not found'}, status=status.HTTP_404_NOT_FOUND)
-    except TrainerProfile.DoesNotExist:
-        return Response({'error': 'Trainer profile not found'}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            return Response({'message': 'Trainer details updated successfully'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({'error': 'Trainer not found'}, status=status.HTTP_404_NOT_FOUND)
+        except TrainerProfile.DoesNotExist:
+            return Response({'error': 'Trainer profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class NutritionGoalView(APIView):
 
@@ -999,7 +1007,7 @@ def get_user_by_firebase_id(request, firebase_id):
 @api_view(['GET'])
 def view_assigned_users_for_trainer(request, id):
     """
-    Get all users assigned to a specific trainer.
+    Get all users assigned to a specific trainer, including their attendance data.
     """
     try:
         # Ensure the trainer exists
@@ -1018,9 +1026,21 @@ def view_assigned_users_for_trainer(request, id):
     users = [assignment.user for assignment in assignments]
 
     # Serialize user data
-    serializer = UserSerializer(users, many=True)
+    user_serializer = UserSerializer(users, many=True)
 
-    return Response({"assigned_users": serializer.data}, status=status.HTTP_200_OK)
+    # Fetch attendance data for each user
+    response_data = []
+    for user in users:
+        # Get attendance records for the user
+        attendance_records = Attendance.objects.filter(user=user)
+        attendance_serializer = AttendanceSerializer(attendance_records, many=True)
+
+        # Combine user and attendance data
+        user_data = user_serializer.data[users.index(user)]
+        user_data['attendance'] = attendance_serializer.data
+        response_data.append(user_data)
+
+    return Response({"assigned_users": response_data}, status=status.HTTP_200_OK)
 
 
 
@@ -1126,3 +1146,69 @@ class AttendanceCheckInView(APIView):
             return Response({"error": "User has already checked in today"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED)
+
+
+
+
+@api_view(['GET'])
+def get_trainer_by_id(request, trainer_id):
+    if not request.user.is_authenticated:
+        return Response({"detail": "You do not have permission to perform this action."},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    # Create a unique cache key
+    cache_key = f"trainer_detail_{trainer_id}"
+
+    # Try to get cached data
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return Response(cached_data, status=status.HTTP_200_OK)
+
+    try:
+        # Fetch the trainer (ensure user_type is 'trainer')
+        trainer = get_object_or_404(User.objects.select_related('trainer_profile'), id=trainer_id, user_type="trainer")
+
+        # Serialize the trainer
+        serializer = LightweightUserSerializer(trainer)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(f"Error fetching trainer: {e}")
+        return Response(
+            {"detail": "An error occurred while fetching the trainer."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+
+class ChatMessageListView(generics.ListAPIView):
+    serializer_class = ChatMessageSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        trainer_id = self.kwargs['trainer_id']
+        return ChatMessage.objects.filter(
+            sender_id__in=[user_id, trainer_id],
+            receiver_id__in=[user_id, trainer_id]
+        ).order_by("timestamp")
+
+
+
+class SendMessageView(APIView):
+    def post(self, request, *args, **kwargs):
+        sender_id = request.data.get("sender_id")
+        receiver_id = request.data.get("receiver_id")
+        message_text = request.data.get("message")
+
+        # Check if users exist
+        try:
+            sender = User.objects.get(id=sender_id)
+            receiver = User.objects.get(id=receiver_id)
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Save message to DB
+        chat_message = ChatMessage.objects.create(sender=sender, receiver=receiver, message=message_text)
+
+        return Response({"message": "Message sent successfully!"}, status=status.HTTP_201_CREATED)

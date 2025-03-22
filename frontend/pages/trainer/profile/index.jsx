@@ -1,82 +1,205 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Edit, Mail, Phone, Award, Clock, Save, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/router';
+import Cookies from 'js-cookie';
+import api from "@/pages/api/axios";
 
 const TrainerProfile = () => {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Dummy trainer data with only the requested fields
-  const [trainerData, setTrainerData] = useState({
-    name: "John Doe",
-    email: "trainer@fitpro.com",
-    phone_number: "+91 9876543210",
-    gender: "male",
-    specialization: ["Weight Training", "HIIT", "Nutrition"],
-    availability: "Both",
-    experience_years: 5,
-    qualifications: ["ACE Certified Personal Trainer", "NASM Fitness Nutrition Specialist"],
-    salary: "₹50,000/month",
-    date_of_birth: "1990-05-15",
-    profile_picture_url: null
-  });
-  
-  const [formData, setFormData] = useState({...trainerData});
-  
+  const [errors, setErrors] = useState({});
+  const [trainerData, setTrainerData] = useState(null);
+  const [formData, setFormData] = useState(null);
+
+  useEffect(() => {
+    const fetchTrainerProfile = async () => {
+      try {
+        const accessToken = Cookies.get("access_token");
+        const trainerId = Cookies.get("id"); // Assuming trainer ID is stored in cookies
+
+        if (!trainerId) {
+          throw new Error("Trainer ID not found in cookies.");
+        }
+
+        const response = await api.get(
+          `trainers/${trainerId}/`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+
+        const trainer = response.data;
+        setTrainerData({
+          ...trainer,
+          qualifications: trainer.qualifications || [], // Ensure qualifications is an array
+        });
+        setFormData({
+          ...trainer,
+          specialization: trainer.trainer_profile.specialization,
+          experience_years: trainer.trainer_profile.experience,
+          salary: trainer.trainer_profile.salary.toString(),
+          qualifications: trainer.qualifications || [], // Ensure qualifications is an array
+          availability: trainer.trainer_profile.availability || 'Morning', // Ensure availability is set
+          gender: trainer.gender || '', // Ensure gender is set
+          name: trainer.name || '', // Ensure name is set
+          date_of_birth: trainer.date_of_birth || '', // Ensure date_of_birth is set
+          email: trainer.email || '', // Ensure email is set
+        });
+      } catch (error) {
+        console.error("Error fetching trainer profile:", error);
+      }
+    };
+
+    fetchTrainerProfile();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
   };
-  
+
   const handleGenderChange = (gender) => {
-    setFormData({
-      ...formData,
-      gender
-    });
+    setFormData((prevData) => ({
+      ...prevData,
+      gender,
+    }));
   };
-  
+
   const handleAvailabilityChange = (availability) => {
-    setFormData({
-      ...formData,
-      availability
-    });
+    setFormData((prevData) => ({
+      ...prevData,
+      availability,
+    }));
   };
-  
-  const handleSubmit = (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setTrainerData(formData);
-    setIsEditing(false);
-    // In a real app, this would include an API call to update the profile
+    const phoneNumberPattern = /^\+91\d{10}$/; // Ensure valid phone number
+    const specializationPattern = /^[A-Za-z\s]+$/;
+    let newErrors = {}; // Object to store field errors
+
+    if (!phoneNumberPattern.test(formData.phone_number)) {
+      newErrors.phone_number = "Phone number must be in the format +91xxxxxxxxxx.";
+    }
+
+    if (!formData.specialization || formData.specialization.length < 3) {
+      newErrors.specialization = "Specialization must be at least 3 characters long.";
+    } else if (!specializationPattern.test(formData.specialization)) {
+      newErrors.specialization = "Specialization must contain only alphabets.";
+    }
+
+    if (!formData.experience_years || isNaN(formData.experience_years)) {
+      newErrors.experience_years = "Experience must be a valid number.";
+    }
+
+    if (!formData.salary || parseFloat(formData.salary) <= 0) {
+      newErrors.salary = "Salary must be greater than zero.";
+    }
+
+    // Ensure all required fields are filled
+    if (!formData.phone_number || !formData.specialization || !formData.experience_years || !formData.salary) {
+      newErrors.general = "All fields are required.";
+    }
+
+    // If there are errors, update state and stop execution
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);  // Set the new error object
+      return;
+    }
+
+    try {
+      const accessToken = Cookies.get("access_token");
+      await api.put(
+        "update-trainer-details/",
+        {
+          email: formData.email,
+          phone_number: formData.phone_number,
+          specialization: formData.specialization,
+          experience: formData.experience_years,
+          salary: formData.salary,
+          is_active: true, // Assuming is_active is always true for trainers
+          availability: formData.availability, // Include availability in the update
+          gender: formData.gender, // Include gender in the update
+          name: formData.name, // Include name in the update
+          date_of_birth: formData.date_of_birth, // Include date_of_birth in the update
+        },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      // Update the trainerData state immediately to reflect changes in the UI
+      setTrainerData((prevData) => ({
+        ...prevData,
+        ...formData,
+        trainer_profile: {
+          ...prevData.trainer_profile,
+          specialization: formData.specialization,
+          experience: formData.experience_years,
+          salary: formData.salary,
+          availability: formData.availability,
+        },
+        gender: formData.gender,
+        name: formData.name,
+        date_of_birth: formData.date_of_birth,
+        email: formData.email,
+      }));
+
+      setIsEditing(false);
+      setErrors({}); // Clear all errors on successful save
+    } catch (error) {
+      console.log("Error updating trainer:", error);
+
+      let errorMessage = "Unexpected error occurred.";
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      // Preserve duplicate phone number error
+      if (errorMessage.includes("duplicate key value violates unique constraint")) {
+        setErrors({ phone_number: "This phone number is already in use." });
+      } else if (errorMessage.includes("duplicate key value violates unique constraint")) {
+        setErrors({ email: "This email is already in use." });
+      } else {
+        setErrors({ general: errorMessage });
+      }
+    }
   };
-  
+
   const goBack = () => {
     router.back();
   };
-  
+
+  if (!trainerData) {
+    return <div>Loading...</div>; // Show a loading state while fetching data
+  }
+
   const initials = trainerData.name.split(' ').map(n => n[0]).join('').toUpperCase();
-  
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <button 
+      <button
         onClick={goBack}
         className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
         Back
       </button>
-      
+
       <div className="bg-white shadow overflow-hidden rounded-lg">
         {/* Profile Header */}
         <div className="bg-orange-500 px-4 py-5 sm:px-6 flex justify-between">
           <div className="flex items-center">
             {trainerData.profile_picture_url ? (
-              <img 
-                src={trainerData.profile_picture_url} 
-                alt="Profile" 
-                className="h-16 w-16 rounded-full object-cover border-2 border-white" 
+              <img
+                src={trainerData.profile_picture_url}
+                alt="Profile"
+                className="h-16 w-16 rounded-full object-cover border-2 border-white"
               />
             ) : (
               <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center text-orange-500 text-xl font-bold">
@@ -88,9 +211,9 @@ const TrainerProfile = () => {
               <p className="text-orange-100">Trainer</p>
             </div>
           </div>
-          
+
           {!isEditing && (
-            <button 
+            <button
               onClick={() => setIsEditing(true)}
               className="bg-white text-orange-500 px-4 py-2 rounded-md flex items-center"
             >
@@ -99,7 +222,7 @@ const TrainerProfile = () => {
             </button>
           )}
         </div>
-        
+
         {/* Profile Content */}
         {isEditing ? (
           <form onSubmit={handleSubmit} className="px-4 py-5 sm:p-6">
@@ -114,7 +237,7 @@ const TrainerProfile = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
                 <input
@@ -124,8 +247,9 @@ const TrainerProfile = () => {
                   onChange={handleInputChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 />
+                {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Phone</label>
                 <div className="mt-1 flex rounded-md shadow-sm">
@@ -140,8 +264,9 @@ const TrainerProfile = () => {
                     className="flex-1 block w-full rounded-none rounded-r-md border-gray-300 focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
                   />
                 </div>
+                {errors.phone_number && <p className="text-red-500 text-sm">{errors.phone_number}</p>}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
                 <input
@@ -152,7 +277,7 @@ const TrainerProfile = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
                 <div className="flex space-x-4">
@@ -197,19 +322,20 @@ const TrainerProfile = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Specialization</label>
                 <input
                   type="text"
                   name="specialization"
-                  value={formData.specialization.join(', ')}
-                  onChange={(e) => setFormData({...formData, specialization: e.target.value.split(', ')})}
+                  value={formData.specialization}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   placeholder="E.g. Weight Training, HIIT, Nutrition"
                 />
+                {errors.specialization && <p className="text-red-500 text-sm">{errors.specialization}</p>}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
                 <div className="flex space-x-4">
@@ -254,7 +380,7 @@ const TrainerProfile = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Experience (Years)</label>
                 <input
@@ -265,8 +391,9 @@ const TrainerProfile = () => {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   min="0"
                 />
+                {errors.experience_years && <p className="text-red-500 text-sm">{errors.experience_years}</p>}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Salary</label>
                 <input
@@ -276,21 +403,25 @@ const TrainerProfile = () => {
                   onChange={handleInputChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                 />
+                {errors.salary && <p className="text-red-500 text-sm">{errors.salary}</p>}
               </div>
-              
+
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700">Qualifications</label>
                 <textarea
                   name="qualifications"
                   rows="3"
-                  value={formData.qualifications.join('\n')}
-                  onChange={(e) => setFormData({...formData, qualifications: e.target.value.split('\n')})}
+                  value={formData.qualifications && Array.isArray(formData.qualifications) ? formData.qualifications.join('\n') : ''}
+                  onChange={(e) => setFormData((prevData) => ({
+                    ...prevData,
+                    qualifications: e.target.value.split('\n'),
+                  }))}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
                   placeholder="Enter each qualification on a new line"
                 ></textarea>
               </div>
             </div>
-            
+
             <div className="mt-6 flex justify-end">
               <button
                 type="button"
@@ -307,6 +438,7 @@ const TrainerProfile = () => {
                 Save Changes
               </button>
             </div>
+            {errors.general && <p className="text-red-500 text-sm mt-4">{errors.general}</p>}
           </form>
         ) : (
           <div className="px-4 py-5 sm:p-6">
@@ -317,7 +449,7 @@ const TrainerProfile = () => {
                 </div>
                 <p className="text-gray-900">{trainerData.name}</p>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <Mail className="h-5 w-5 mr-2" />
@@ -325,7 +457,7 @@ const TrainerProfile = () => {
                 </div>
                 <p className="text-gray-900">{trainerData.email}</p>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <Phone className="h-5 w-5 mr-2" />
@@ -333,49 +465,47 @@ const TrainerProfile = () => {
                 </div>
                 <p className="text-gray-900">{trainerData.phone_number}</p>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <span className="text-sm font-medium">Gender</span>
                 </div>
                 <p className="text-gray-900 capitalize">{trainerData.gender}</p>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <span className="text-sm font-medium">Specialization</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {trainerData.specialization.map((spec, index) => (
-                    <span key={index} className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
-                      {spec}
-                    </span>
-                  ))}
+                  <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">
+                    {trainerData.trainer_profile.specialization}
+                  </span>
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <Clock className="h-5 w-5 mr-2" />
                   <span className="text-sm font-medium">Availability</span>
                 </div>
-                <p className="text-gray-900">{trainerData.availability}</p>
+                <p className="text-gray-900">{trainerData.trainer_profile.availability}</p>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <span className="text-sm font-medium">Experience (Years)</span>
                 </div>
-                <p className="text-gray-900">{trainerData.experience_years} years</p>
+                <p className="text-gray-900">{trainerData.trainer_profile.experience} years</p>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <span className="text-sm font-medium">Salary</span>
                 </div>
-                <p className="text-gray-900">{trainerData.salary}</p>
+                <p className="text-gray-900">{trainerData.trainer_profile.salary}</p>
               </div>
-              
+
               <div>
                 <div className="flex items-center text-gray-500 mb-2">
                   <Calendar className="h-5 w-5 mr-2" />
@@ -383,16 +513,20 @@ const TrainerProfile = () => {
                 </div>
                 <p className="text-gray-900">{trainerData.date_of_birth}</p>
               </div>
-              
+
               <div className="sm:col-span-2">
                 <div className="flex items-center text-gray-500 mb-2">
                   <Award className="h-5 w-5 mr-2" />
                   <span className="text-sm font-medium">Qualifications</span>
                 </div>
                 <ul className="list-disc pl-5 text-gray-900">
-                  {trainerData.qualifications.map((qual, index) => (
-                    <li key={index}>{qual}</li>
-                  ))}
+                  {trainerData.qualifications && Array.isArray(trainerData.qualifications) ? (
+                    trainerData.qualifications.map((qual, index) => (
+                      <li key={index}>{qual}</li>
+                    ))
+                  ) : (
+                    <li>No qualifications available</li>
+                  )}
                 </ul>
               </div>
             </div>

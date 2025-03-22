@@ -7,6 +7,8 @@ import TrainerSidebar from './TrainerSidebar';
 import Navbar from './Navbar';
 import Cookies from 'js-cookie';
 import api from "@/pages/api/axios";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const GymTrainerDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,6 +19,12 @@ const GymTrainerDashboard = () => {
   const [attendanceData, setAttendanceData] = useState({});
   const [assignedUsers, setAssignedUsers] = useState([]);
   const [availableDates, setAvailableDates] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [showCheckOutModal, setShowCheckOutModal] = useState(false);
+  const [checkInLoading, setCheckInLoading] = useState(false);
+  const [checkOutLoading, setCheckOutLoading] = useState(false);
 
   // Get attendance for the selected date
   const filteredMembers = attendanceData[selectedDate] || [];
@@ -81,12 +89,12 @@ const GymTrainerDashboard = () => {
       }
       return member;
     });
-    
+
     setAttendanceData(prevData => ({
       ...prevData,
       [selectedDate]: updatedMembers,
     }));
-    
+
     // Update stats
     updateStats(selectedDate, updatedMembers);
   };
@@ -94,6 +102,30 @@ const GymTrainerDashboard = () => {
   // Function to handle date change
   const handleDateChange = (date) => {
     setSelectedDate(date);
+    updateStatsForDate(date);
+  };
+
+  // Function to update stats based on attendance data for a specific date
+  const updateStatsForDate = (date) => {
+    const membersForDate = assignedUsers.map(user => {
+      const attendanceForDate = user.attendance.find(att => att.created_at.split('T')[0] === date);
+      return {
+        ...user,
+        checkInTime: attendanceForDate ? attendanceForDate.check_in_time : null,
+        checkOutTime: attendanceForDate ? attendanceForDate.check_out_time : null,
+      };
+    });
+
+    const checkedIn = membersForDate.filter(m => m.checkInTime).length;
+    const checkedOut = membersForDate.filter(m => m.checkOutTime).length;
+    const absent = membersForDate.length - checkedIn;
+
+    setStats({
+      totalClients: membersForDate.length,
+      checkedIn,
+      checkedOut,
+      absent
+    });
   };
 
   // Function to update stats based on attendance data
@@ -101,9 +133,9 @@ const GymTrainerDashboard = () => {
     const checkedIn = members.filter(m => m.checkInStatus === 'checked-in').length;
     const checkedOut = members.filter(m => m.checkInStatus === 'checked-out').length;
     const absent = members.filter(m => m.checkInStatus === 'absent').length;
-    
+
     setStats({
-      totalClients: users.length,
+      totalClients: members.length,
       checkedIn,
       checkedOut,
       absent
@@ -118,24 +150,26 @@ const GymTrainerDashboard = () => {
         try {
           setLoading(true);
           const response = await api.get(`user/${firebaseId}/`, {
-            firebase_id: firebaseId
+            headers: {
+              Authorization: `Bearer ${Cookies.get('access_token')}`
+            }
           });
           setTrainerName(response.data.name);
           setTrainerId(response.data.id);
           Cookies.set('id', response.data.id);
-          
+
           // Fetch assigned users initially
           await fetchAssignedUsers(response.data.id);
 
           setLoading(false);
 
-          // Set interval to fetch assigned users every 3 seconds
+          // Set interval to fetch assigned users every 5 seconds
           const intervalId = setInterval(() => {
             fetchAssignedUsers(response.data.id);
           }, 5000);
 
-          
-
+          // Cleanup interval on component unmount
+          return () => clearInterval(intervalId);
         } catch (error) {
           console.error('Error fetching trainer details:', error);
           setLoading(false);
@@ -144,34 +178,158 @@ const GymTrainerDashboard = () => {
 
       fetchTrainerDetails();
     }
-}, []);
+  }, []);
 
-// Fetch assigned users from API every 3 seconds
-const fetchAssignedUsers = async (trainerId) => {
-  if (!trainerId) return;
+  // Fetch assigned users from API every 5 seconds
+  const fetchAssignedUsers = async (trainerId) => {
+    if (!trainerId) return;
 
-  try {
-    const response = await api.get(`trainer/${trainerId}/assigned-users/`);
-    const users = response.data.assigned_users.map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone_number,
-      gender: user.gender || "Not Specified",
-      isActive: user.is_active,
-      subscription: user.subscriptions.length > 0 ? user.subscriptions[0].subscription.name : "No Subscription",
-      startDate: user.subscriptions.length > 0 ? user.subscriptions[0].start_date : "N/A",
-      endDate: user.subscriptions.length > 0 ? user.subscriptions[0].end_date : "N/A",
-      status: user.subscriptions.length > 0 ? user.subscriptions[0].status : "Inactive"
-    }));
+    try {
+      const response = await api.get(`trainer/${trainerId}/assigned-users/`, {
+        headers: {
+          Authorization: `Bearer ${Cookies.get('access_token')}`
+        }
+      });
+      const users = response.data.assigned_users.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone_number,
+        gender: user.gender || "Not Specified",
+        isActive: user.is_active,
+        subscription: user.subscriptions.length > 0 ? user.subscriptions[0].subscription.name : "No Subscription",
+        startDate: user.subscriptions.length > 0 ? user.subscriptions[0].start_date : "N/A",
+        endDate: user.subscriptions.length > 0 ? user.subscriptions[0].end_date : "N/A",
+        status: user.subscriptions.length > 0 ? user.subscriptions[0].status : "Inactive",
+        attendance: user.attendance
+      }));
 
-    setAssignedUsers(users);
-    sessionStorage.setItem("assignedUsers", JSON.stringify(users));
-  } catch (error) {
-    console.error('Error fetching assigned users:', error);
-  }
-};
-  
+      setAssignedUsers(users);
+      sessionStorage.setItem("assignedUsers", JSON.stringify(users));
+
+      // Extract unique dates from attendance records
+      const dates = [...new Set(users.flatMap(user => user.attendance.map(att => att.created_at.split('T')[0])))];
+      setAvailableDates(dates);
+
+      // Update stats for the selected date
+      updateStatsForDate(selectedDate);
+    } catch (error) {
+      console.log('Error fetching assigned users:', error);
+    }
+  };
+
+  // Function to format time to hh:mm
+  const formatTime = (time) => {
+    if (!time) return 'N/A';
+    const timeParts = time.split(':');
+    return `${timeParts[0]}:${timeParts[1]}`;
+  };
+
+  // Function to handle check-in
+  const handleCheckIn = async () => {
+    if (!selectedUser || !selectedTimeSlot) {
+      toast.error('Please select a user and a time slot.');
+      return;
+    }
+
+    const token = Cookies.get('access_token');
+    if (!token) {
+      console.error("Access token is missing.");
+      return;
+    }
+
+    // Format the selected time slot to "HH:MM:SS"
+    const formattedTimeSlot = `${selectedTimeSlot}:00`;
+
+    setCheckInLoading(true);
+
+    try {
+      const response = await api.post('attendance/check-in/', {
+        user_id: selectedUser.id,
+        check_in_time: formattedTimeSlot
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 201) {
+        toast.success('Check-in successful!');
+        setShowCheckInModal(false);
+        // Update the attendance data locally
+        const updatedMembers = assignedUsers.map(user => {
+          if (user.id === selectedUser.id) {
+            return { ...user, attendance: [{ check_in_time: formattedTimeSlot, check_out_time: null, created_at: new Date().toISOString() }] };
+          }
+          return user;
+        });
+        setAssignedUsers(updatedMembers);
+        updateStatsForDate(selectedDate);
+      } else if (response.status === 400 && response.data.message === 'User has already checked in today') {
+        toast.error('User has already checked in today');
+      } else {
+        toast.error('Check-in failed. Please try again.');
+      }
+    } catch (error) {
+      console.log('Error checking in:', error);
+      toast.error('Check-in failed. Please try again.');
+    } finally {
+      setCheckInLoading(false);
+    }
+  };
+
+  // Function to handle check-out
+  const handleCheckOut = async () => {
+    if (!selectedUser || !selectedTimeSlot) {
+      toast.error('Please select a user and a time slot.');
+      return;
+    }
+
+    const token = Cookies.get('access_token');
+    if (!token) {
+      console.error("Access token is missing.");
+      return;
+    }
+
+    // Format the selected time slot to "HH:MM:SS"
+    const formattedTimeSlot = `${selectedTimeSlot}:00`;
+
+    setCheckOutLoading(true);
+
+    try {
+      const response = await api.post('attendance/check-out/', {
+        user_id: selectedUser.id,
+        check_out_time: formattedTimeSlot
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 200) {
+        toast.success('Check-out successful!');
+        setShowCheckOutModal(false);
+        // Update the attendance data locally
+        const updatedMembers = assignedUsers.map(user => {
+          if (user.id === selectedUser.id) {
+            return { ...user, attendance: [{ check_in_time: user.attendance[0]?.check_in_time, check_out_time: formattedTimeSlot, created_at: new Date().toISOString() }] };
+          }
+          return user;
+        });
+        setAssignedUsers(updatedMembers);
+        updateStatsForDate(selectedDate);
+      } else if (response.status === 400 && response.data.message === 'User has already checked out today') {
+        toast.error('User has already checked out today');
+      } else {
+        toast.error('Check-out failed. Please try again.');
+      }
+    } catch (error) {
+      console.log('Error checking out:', error);
+      toast.error('Check-out failed. Please try again.');
+    } finally {
+      setCheckOutLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -180,7 +338,7 @@ const fetchAssignedUsers = async (trainerId) => {
       </div>
     );
   }
-  
+
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50">
       <TrainerSidebar />
@@ -201,12 +359,94 @@ const fetchAssignedUsers = async (trainerId) => {
                   </div>
                 </div>
                 <div className="flex space-x-3 mt-4 md:mt-0">
-                  <Button className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
+                  <Button onClick={() => setShowCheckInModal(true)} className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
                     <Clock className="h-4 w-4 mr-2" />
                     Check In
                   </Button>
+                  <Button onClick={() => setShowCheckOutModal(true)} className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Check Out
+                  </Button>
                 </div>
               </div>
+
+              {/* Check-In Modal */}
+              {showCheckInModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                  <div className="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 className="text-lg font-semibold mb-4">Check In</h2>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700">Select User</label>
+                      <select
+                        value={selectedUser?.id || ''}
+                        onChange={(e) => setSelectedUser(assignedUsers.find(user => user.id === parseInt(e.target.value)))}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      >
+                        <option value="">Select a user</option>
+                        {assignedUsers.map(user => (
+                          <option key={user.id} value={user.id}>{user.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700">Select Time Slot</label>
+                      <input
+                        type="time"
+                        value={selectedTimeSlot}
+                        onChange={(e) => setSelectedTimeSlot(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={handleCheckIn} className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
+                        {checkInLoading ? 'Checking In...' : 'Check In'}
+                      </Button>
+                      <Button onClick={() => setShowCheckInModal(false)} className="ml-2 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Check-Out Modal */}
+              {showCheckOutModal && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                  <div className="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 className="text-lg font-semibold mb-4">Check Out</h2>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700">Select User</label>
+                      <select
+                        value={selectedUser?.id || ''}
+                        onChange={(e) => setSelectedUser(assignedUsers.find(user => user.id === parseInt(e.target.value)))}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      >
+                        <option value="">Select a user</option>
+                        {assignedUsers.map(user => (
+                          <option key={user.id} value={user.id}>{user.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700">Select Time Slot</label>
+                      <input
+                        type="time"
+                        value={selectedTimeSlot}
+                        onChange={(e) => setSelectedTimeSlot(e.target.value)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={handleCheckOut} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                        {checkOutLoading ? 'Checking Out...' : 'Check Out'}
+                      </Button>
+                      <Button onClick={() => setShowCheckOutModal(false)} className="ml-2 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Stats Cards */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -277,40 +517,70 @@ const fetchAssignedUsers = async (trainerId) => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Check-in</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Time</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out Time</th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-  {assignedUsers.map((user) => (
-    <tr key={user.id} className="hover:bg-gray-50">
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center">
-          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-medium">
-            {user.name.charAt(0)}
-          </div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900">{user.name}</div>
-            <div className="text-xs text-gray-500">{user.gender}</div>
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm text-gray-900">{user.email}</div>
-        <div className="text-xs text-gray-500">{user.phone}</div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`px-2 py-1 text-xs rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-          {user.status}
-        </span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm text-gray-900">{user.subscription}</div>
-        <div className="text-xs text-gray-500">Valid: {user.startDate} - {user.endDate}</div>
-      </td>
-    </tr>
-  ))}
-</tbody>
+                        {assignedUsers.map((user) => {
+                          const attendanceForDate = user.attendance.find(att => att.created_at.split('T')[0] === selectedDate);
+                          return (
+                            <tr key={user.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-medium">
+                                    {user.name.charAt(0)}
+                                  </div>
+                                  <div className="ml-3">
+                                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                    <div className="text-xs text-gray-500">{user.gender}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">{user.email}</div>
+                                <div className="text-xs text-gray-500">{user.phone}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {user.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {attendanceForDate ? formatTime(attendanceForDate.check_in_time) : 'N/A'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {attendanceForDate ? formatTime(attendanceForDate.check_out_time) : 'N/A'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button
+                                  onClick={() => markAttendance(user.id, 'checked-in')}
+                                  className="text-green-600 hover:text-green-900"
+                                >
+                                  <CheckCircle className="h-5 w-5" />
+                                </button>
+                                <button
+                                  onClick={() => markAttendance(user.id, 'checked-out')}
+                                  className="text-yellow-600 hover:text-yellow-900 ml-2"
+                                >
+                                  <XCircle className="h-5 w-5" />
+                                </button>
+                                <button
+                                  onClick={() => markAttendance(user.id, 'absent')}
+                                  className="text-red-600 hover:text-red-900 ml-2"
+                                >
+                                  <Activity className="h-5 w-5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
                     </table>
                   </div>
                 </TabsContent>
@@ -392,6 +662,7 @@ const fetchAssignedUsers = async (trainerId) => {
               </Tabs>
             </div>
           </div>
+          <ToastContainer />
         </main>
       </div>
     </div>

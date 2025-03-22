@@ -1,9 +1,9 @@
 from django.urls import path
 from .views import (
-    AttendanceCheckInView, AttendanceCheckOutView, AttendanceListView, add_subscription, delete_all, delete_subscription, get_user_by_firebase_id,
+    AttendanceCheckInView, AttendanceCheckOutView, AttendanceListView, ChatMessageListView, SendMessageView, UpdateTrainerDetails, add_subscription, delete_all, delete_subscription, get_trainer_by_id, get_user_by_firebase_id,
     list_subscriptions, list_trainers, list_users, list_users_and_trainers,
     login_user, register_user, send_otp, send_password_reset_email,
-    update_subscription, update_trainer_details, update_user_details,
+    update_subscription,  update_user_details,
     user_payments_with_subscription, verify_otp, NutritionGoalView,
     get_user_profile, home_chat, assign_trainer, remove_trainer,
     view_assigned_trainer_for_user, view_assigned_trainers,
@@ -26,7 +26,7 @@ urlpatterns = [
     path('delete',delete_all,name = 'delete'),
     path('list_users_and_trainers/', list_users_and_trainers, name='list_users_and_trainers'),
     path('update_user_details/', update_user_details, name='update_subscription'),
-    path('update-trainer-details/', update_trainer_details, name='update_trainer_details'),
+    path('update-trainer-details/', UpdateTrainerDetails.as_view(), name='update-trainer-details'),
     path('nutrition-goals/<str:date_str>/', NutritionGoalView.as_view(), name="nutrition_goal"),
     path('nutrition-goals/', NutritionGoalView.as_view(), name="nutrition_goal"),
     path('user/profile/', get_user_profile, name='user_profile'),
@@ -42,4 +42,7 @@ urlpatterns = [
     path('attendance/check-in/', AttendanceCheckInView.as_view(), name='attendance-check-in'),
     path('attendance/check-out/', AttendanceCheckOutView.as_view(), name='attendance-check-out'),
     path('attendance/<int:user_id>/', AttendanceListView.as_view(), name='attendance-list'),
+    path('trainers/<int:trainer_id>/', get_trainer_by_id, name='get_trainer_by_id'),
+    path("messages/<int:user_id>/<int:trainer_id>/", ChatMessageListView.as_view(), name="get_messages"),
+    path("messages/send/", SendMessageView.as_view(), name="send_message"),
 ]
