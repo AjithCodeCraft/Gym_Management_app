@@ -3,10 +3,12 @@ from django.urls import path
 from .views import (
 
     DailyWorkoutView,
+    UpdateTrainerDetails,
     add_subscription,
     delete_all,
     delete_subscription,
     get_default_workout,
+    get_trainer_by_id,
     list_subscriptions,
     list_trainers,
     list_users,
@@ -16,7 +18,6 @@ from .views import (
     send_otp,
     send_password_reset_email,
     update_subscription,
-    update_trainer_details,
     update_user_details,
     verify_otp,
     NutritionGoalView,
@@ -70,7 +71,7 @@ urlpatterns = [
     ),
     path("update_user_details/", update_user_details, name="update_subscription"),
     path(
-        "update-trainer-details/", update_trainer_details, name="update_trainer_details"
+        "update-trainer-details/", UpdateTrainerDetails.as_view(), name="update_trainer_details"
     ),
     path(
         "nutrition-goals/<str:date_str>/",
