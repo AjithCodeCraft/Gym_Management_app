@@ -38,34 +38,6 @@ export default function AIWorkoutChatbot({
    const [target, setTarget] = useState<string>("");
    const [message, setMessage] = useState<string>("");
 
-   const dummyWorkoutPlan = {
-      week: {
-         Monday: {
-            day: "Monday",
-            part: "Upper Body",
-            workout: [
-               {
-                  exercise: "Barbell Bench Press",
-                  sets: 4,
-                  reps: 8,
-                  rest: 90,
-               },
-               { exercise: "Cable Flyes", sets: 3, reps: 12, rest: 90 },
-            ],
-         },
-         Tuesday: {
-            day: "Tuesday",
-            part: "Lower Body",
-            workout: [
-               { exercise: "Barbell Squat", sets: 4, reps: 8, rest: 90 },
-               { exercise: "Lunges", sets: 3, reps: 12, rest: 90 },
-               { exercise: "Leg Press", sets: 3, reps: 12, rest: 90 },
-            ],
-         },
-         // ... rest of the workout plan (as you provided)
-      },
-   };
-
    const handleGeneratePlan = async () => {
       const weekDay = selectedDate.toLocaleDateString("en-ca", {
          weekday: "long",
