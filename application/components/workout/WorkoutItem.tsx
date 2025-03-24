@@ -1,5 +1,5 @@
 import React, { SetStateAction, useState, Dispatch, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { isSame, isBefore, isAfter } from "@/hooks/useExerciseData";
 import { DailyWorkoutRecord } from "@/app/(tabs)/workout";
 import useWorkoutUpdater from "@/hooks/useWorkoutUpdater";
@@ -99,11 +99,18 @@ export const itemStyles = StyleSheet.create({
       marginVertical: 8,
       marginHorizontal: 16,
       padding: 15,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      backgroundColor: "#fff", // Required for elevation to work on Android
+      ...Platform.select({
+         ios: {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+         },
+         android: {
+            elevation: 3,
+         },
+      }),
    },
    undone: {
       backgroundColor: "white", // to mark exercise as undone
