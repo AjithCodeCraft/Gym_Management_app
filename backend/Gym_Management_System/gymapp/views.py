@@ -15,7 +15,6 @@ from .models import (
     TrainerAssignment,
     DailyWorkout,
     DefaultWorkout,
-    TrainerAssignment,
     SleepLog,
     Attendance,
 )
@@ -1245,8 +1244,12 @@ def chat(request):
 
         result = result.strip("'").replace("'", '"')
 
+        start = result.find("{")
+        end = (result.rfind("}") + 1) or len(result)
+
+        result = result[start:end]
+
         result = re.sub(r"(\d+)([a-zA-Z]+)", r"\1", result)
-        print(result)
         result = json.loads(result)
 
         serializer = DefaultWorkoutSerializer(
