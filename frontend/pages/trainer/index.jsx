@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, CheckCircle, XCircle, Activity, MoreHorizontal } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Activity, MoreHorizontal } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,10 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const GymTrainerDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // Default to today
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }); // Default to today
   const [trainerName, setTrainerName] = useState('');
   const [trainerId, setTrainerId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +28,7 @@ const GymTrainerDashboard = () => {
   const [showCheckOutModal, setShowCheckOutModal] = useState(false);
   const [checkInLoading, setCheckInLoading] = useState(false);
   const [checkOutLoading, setCheckOutLoading] = useState(false);
+  const [trainerCheckInStatus, setTrainerCheckInStatus] = useState(null);
 
   // Get attendance for the selected date
   const filteredMembers = attendanceData[selectedDate] || [];
@@ -161,15 +165,10 @@ const GymTrainerDashboard = () => {
           // Fetch assigned users initially
           await fetchAssignedUsers(response.data.id);
 
+          // Fetch trainer's check-in status
+          await fetchTrainerCheckInStatus();
+
           setLoading(false);
-
-          // Set interval to fetch assigned users every 5 seconds
-          const intervalId = setInterval(() => {
-            fetchAssignedUsers(response.data.id);
-          }, 5000);
-
-          // Cleanup interval on component unmount
-          return () => clearInterval(intervalId);
         } catch (error) {
           console.error('Error fetching trainer details:', error);
           setLoading(false);
@@ -180,7 +179,7 @@ const GymTrainerDashboard = () => {
     }
   }, []);
 
-  // Fetch assigned users from API every 5 seconds
+  // Fetch assigned users from API
   const fetchAssignedUsers = async (trainerId) => {
     if (!trainerId) return;
 
@@ -215,6 +214,40 @@ const GymTrainerDashboard = () => {
       updateStatsForDate(selectedDate);
     } catch (error) {
       console.log('Error fetching assigned users:', error);
+    }
+  };
+
+  // Fetch trainer's check-in status
+  const fetchTrainerCheckInStatus = async () => {
+    const trainer_id = Cookies.get('id')
+    const token = Cookies.get('access_token');
+    if (!token) {
+      console.error("Access token is missing.");
+      return;
+    }
+
+    try {
+      const response = await api.get(`trainer/${trainer_id}/`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const attendance = response.data.attendance;
+      const today = new Date().toISOString().split('T')[0];
+      const todayAttendance = attendance.find(att => att.created_at.split('T')[0] === today);
+
+      if (todayAttendance) {
+        if (todayAttendance.check_out_time) {
+          setTrainerCheckInStatus('checked-out');
+        } else {
+          setTrainerCheckInStatus('checked-in');
+        }
+      } else {
+        setTrainerCheckInStatus(null);
+      }
+    } catch (error) {
+      console.log('Error fetching trainer check-in status:', error);
     }
   };
 
@@ -331,6 +364,84 @@ const GymTrainerDashboard = () => {
     }
   };
 
+  // Function to handle trainer check-in
+  const handleTrainerCheckIn = async () => {
+    const token = Cookies.get('access_token');
+    if (!token) {
+      console.error("Access token is missing.");
+      return;
+    }
+
+    const currentTime = new Date().toISOString().split('T')[1].substring(0, 8);
+
+    setCheckInLoading(true);
+
+    try {
+      const response = await api.post('trainer/checkin/', {
+        trainer_id: trainerId,
+        check_in_time: currentTime
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 201) {
+        toast.success('Trainer check-in successful!');
+        setTrainerCheckInStatus('checked-in');
+        updateStatsForDate(selectedDate); // Update stats immediately
+      } else if (response.status === 400 && response.data.message === 'Trainer has already checked in today') {
+        toast.error('Trainer has already checked in today');
+      } else {
+        toast.error('Trainer check-in failed. Please try again.');
+      }
+    } catch (error) {
+      console.log('Error checking in trainer:', error);
+      toast.error('Trainer check-in failed. Please try again.');
+    } finally {
+      setCheckInLoading(false);
+    }
+  };
+
+  // Function to handle trainer check-out
+  const handleTrainerCheckOut = async () => {
+    const token = Cookies.get('access_token');
+    if (!token) {
+      console.error("Access token is missing.");
+      return;
+    }
+
+    const currentTime = new Date().toISOString().split('T')[1].substring(0, 8);
+
+    setCheckOutLoading(true);
+
+    try {
+      const response = await api.post('trainer/checkout/', {
+        trainer_id: trainerId,
+        check_out_time: currentTime
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 200) {
+        toast.success('Trainer check-out successful!');
+        setTrainerCheckInStatus('checked-out');
+        updateStatsForDate(selectedDate); // Update stats immediately
+      } else if (response.status === 400 && response.data.message === 'Trainer has already checked out today') {
+        toast.error('Trainer has already checked out today');
+      } else {
+        toast.error('Trainer check-out failed. Please try again.');
+      }
+    } catch (error) {
+      console.log('Error checking out trainer:', error);
+      toast.error('Trainer check-out failed. Please try again.');
+    } finally {
+      setCheckOutLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -359,15 +470,43 @@ const GymTrainerDashboard = () => {
                   </div>
                 </div>
                 <div className="flex space-x-3 mt-4 md:mt-0">
-                  <Button onClick={() => setShowCheckInModal(true)} className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
+                  <Button onClick={handleTrainerCheckIn} className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
                     <Clock className="h-4 w-4 mr-2" />
-                    Check In
+                    <span className={`${checkInLoading ? 'animate-pulse' : ''}`}>Trainer Check In</span>
                   </Button>
-                  <Button onClick={() => setShowCheckOutModal(true)} className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                  <Button onClick={handleTrainerCheckOut} className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
                     <Clock className="h-4 w-4 mr-2" />
-                    Check Out
+                    <span className={`${checkOutLoading ? 'animate-pulse' : ''}`}>Trainer Check Out</span>
                   </Button>
                 </div>
+              </div>
+
+              {/* Trainer Check-In Status */}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-500">Trainer Check-In Status:</label>
+                <div className={`px-2 py-1 text-xs rounded-full ${trainerCheckInStatus === 'checked-in' ? 'bg-green-100 text-green-800' : trainerCheckInStatus === 'checked-out' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                  {trainerCheckInStatus === 'checked-in' ? 'Checked In' : trainerCheckInStatus === 'checked-out' ? 'Checked Out' : 'Not Checked In'}
+                </div>
+              </div>
+
+              {/* Buttons for User Check-In and Check-Out */}
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => setShowCheckInModal(true)}
+                  className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+                  disabled={trainerCheckInStatus !== 'checked-in'}
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  User Check In
+                </Button>
+                <Button
+                  onClick={() => setShowCheckOutModal(true)}
+                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                  disabled={trainerCheckInStatus !== 'checked-in'}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  User Check Out
+                </Button>
               </div>
 
               {/* Check-In Modal */}
@@ -398,7 +537,7 @@ const GymTrainerDashboard = () => {
                       />
                     </div>
                     <div className="flex justify-end">
-                      <Button onClick={handleCheckIn} className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors">
+                      <Button onClick={handleCheckIn} className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors" disabled={trainerCheckInStatus !== 'checked-in'}>
                         {checkInLoading ? 'Checking In...' : 'Check In'}
                       </Button>
                       <Button onClick={() => setShowCheckInModal(false)} className="ml-2 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
@@ -437,7 +576,7 @@ const GymTrainerDashboard = () => {
                       />
                     </div>
                     <div className="flex justify-end">
-                      <Button onClick={handleCheckOut} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+                      <Button onClick={handleCheckOut} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors" disabled={trainerCheckInStatus !== 'checked-in'}>
                         {checkOutLoading ? 'Checking Out...' : 'Check Out'}
                       </Button>
                       <Button onClick={() => setShowCheckOutModal(false)} className="ml-2 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
@@ -561,18 +700,21 @@ const GymTrainerDashboard = () => {
                                 <button
                                   onClick={() => markAttendance(user.id, 'checked-in')}
                                   className="text-green-600 hover:text-green-900"
+                                  disabled={trainerCheckInStatus !== 'checked-in'}
                                 >
                                   <CheckCircle className="h-5 w-5" />
                                 </button>
                                 <button
                                   onClick={() => markAttendance(user.id, 'checked-out')}
                                   className="text-yellow-600 hover:text-yellow-900 ml-2"
+                                  disabled={trainerCheckInStatus !== 'checked-in'}
                                 >
                                   <XCircle className="h-5 w-5" />
                                 </button>
                                 <button
                                   onClick={() => markAttendance(user.id, 'absent')}
                                   className="text-red-600 hover:text-red-900 ml-2"
+                                  disabled={trainerCheckInStatus !== 'checked-in'}
                                 >
                                   <Activity className="h-5 w-5" />
                                 </button>
@@ -596,7 +738,7 @@ const GymTrainerDashboard = () => {
                             <div key={session.id} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-100">
                               <div className="flex items-center">
                                 <div className="mr-4 text-gray-500">
-                                  <Calendar className="h-5 w-5" />
+
                                 </div>
                                 <div>
                                   <p className="font-medium">{session.client}</p>
