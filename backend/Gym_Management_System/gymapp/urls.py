@@ -3,6 +3,13 @@ from django.urls import path
 from .views import (
 
     DailyWorkoutView,
+    GetUserBySenderIDView,
+    TrainerAttendanceCheckInView,
+    TrainerAttendanceCheckOutView,
+    TrainerAttendanceListView,
+    TrainerDetailView,
+    TrainerMessagesView,
+    TrainerSendRecievedMessageListView,
     UpdateTrainerDetails,
     add_subscription,
     delete_all,
@@ -103,7 +110,10 @@ urlpatterns = [
         user_payments_with_subscription,
         name="user-payments-with-subscription",
     ),
-    path("sleep-logs/", sleep_log_list_create_update, name="sleep-logs"),
+    path(
+        "sleep-logs/", 
+        sleep_log_list_create_update, 
+        name="sleep-logs"),
     path(
         "user/<str:firebase_id>/",
         get_user_by_firebase_id,
@@ -129,8 +139,48 @@ urlpatterns = [
         AttendanceListView.as_view(),
         name="attendance-list",
     ),
-    path('trainers/<int:trainer_id>/', get_trainer_by_id, name='get_trainer_by_id'),
-    path("messages/<int:user_id>/<int:trainer_id>/", ChatMessageListView.as_view(), name="get_messages"),
-    path("messages/send/", SendMessageView.as_view(), name="send_message"),
+    path(
+        'trainers/<int:trainer_id>/', 
+        get_trainer_by_id,
+        name='get_trainer_by_id'),
+    path(
+        "messages/<int:user_id>/<int:trainer_id>/", 
+        ChatMessageListView.as_view(), 
+        name="get_messages"),
+    path(
+        "messages/send/", 
+        SendMessageView.as_view(), 
+        name="send_message"),
+    path(
+        "trainer/checkin/", 
+        TrainerAttendanceCheckInView.as_view(), 
+        name="trainer-checkin"),
+    path("trainer/checkout/", 
+        TrainerAttendanceCheckOutView.as_view(), 
+        name="trainer-checkout"),
+    path(
+        "trainer/attendance/", 
+         TrainerAttendanceListView.as_view(), 
+         name="trainer-attendance-list"),
+    path(
+        "trainer/<int:trainer_id>/", 
+        TrainerDetailView.as_view(), 
+        name="trainer-detail"),
+    path(
+        "trainer/<int:trainer_id>/messages/", 
+        TrainerMessagesView.as_view(), 
+        name="trainer-messages"),
+    path(
+        "user/sender/<int:sender_id>/", 
+        GetUserBySenderIDView.as_view(), 
+        name="get-user-by-sender"),
+    path(
+        "trainer/<int:trainer_id>/user/<int:user_id>/messages/", \
+        TrainerSendRecievedMessageListView.as_view(), 
+        name="trainer-messages"),
+
+
+
+
 ]
 

@@ -1622,6 +1622,152 @@ class AttendanceCheckInView(APIView):
 
 
 
+class TrainerAttendanceCheckInView(APIView):
+    """API for trainers to check in with a given check-in time"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        trainer = request.user
+        if trainer.user_type != "trainer":
+            return Response(
+                {"error": "Only trainers are allowed to check-in"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        trainer_id = request.data.get("trainer_id")
+        check_in_time = request.data.get("check_in_time")
+
+        if not trainer_id or not check_in_time:
+            return Response(
+                {"error": "Trainer ID and check-in time are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            trainer_user = User.objects.get(id=trainer_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Trainer not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            # Validate check-in time format (HH:MM:SS)
+            check_in_time_obj = datetime.strptime(check_in_time, "%H:%M:%S").time()
+        except ValueError:
+            return Response(
+                {"error": "Invalid check-in time format. Use HH:MM:SS"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        today = datetime.today().date()
+
+        # Check if the trainer has already checked in today
+        attendance_record, created = Attendance.objects.get_or_create(
+            user=trainer_user,
+            created_at__date=today,
+            defaults={"check_in_time": check_in_time_obj, "status": "present"},
+        )
+
+        if not created:
+            return Response(
+                {"error": "Trainer has already checked in today"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED)
+
+
+
+class TrainerAttendanceCheckOutView(APIView):
+    """API for trainers to check out with a given check-out time"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        trainer = request.user
+        if trainer.user_type != "trainer":
+            return Response(
+                {"error": "Only trainers are allowed to check-out"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        trainer_id = request.data.get("trainer_id")
+        check_out_time = request.data.get("check_out_time")
+
+        if not trainer_id or not check_out_time:
+            return Response(
+                {"error": "Trainer ID and check-out time are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            trainer_user = User.objects.get(id=trainer_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Trainer not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            # Validate check-out time format (HH:MM:SS)
+            check_out_time_obj = datetime.strptime(check_out_time, "%H:%M:%S").time()
+        except ValueError:
+            return Response(
+                {"error": "Invalid check-out time format. Use HH:MM:SS"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        today = datetime.today().date()
+
+        try:
+            attendance_record = Attendance.objects.get(
+                user=trainer_user, created_at__date=today
+            )
+        except Attendance.DoesNotExist:
+            return Response(
+                {"error": "No check-in record found for today"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if attendance_record.check_out_time:
+            return Response(
+                {"error": "Trainer has already checked out today"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        attendance_record.check_out_time = check_out_time_obj
+        attendance_record.save()
+
+        return Response(
+            AttendanceSerializer(attendance_record).data, status=status.HTTP_200_OK
+        )
+
+
+
+class TrainerAttendanceListView(APIView):
+    """API for trainers to view their own check-in and check-out history"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        trainer = request.user
+        if trainer.user_type != "trainer":  # Ensure only trainers can access
+            return Response(
+                {"error": "Only trainers can view their attendance records"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Fetch attendance records where the logged-in user is a trainer
+        attendance_records = Attendance.objects.filter(user=trainer).order_by("-created_at")
+
+        if not attendance_records.exists():
+            return Response(
+                {"error": "No attendance records found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response(AttendanceSerializer(attendance_records, many=True).data, status=status.HTTP_200_OK)
+
+
 
 @api_view(['GET'])
 def get_trainer_by_id(request, trainer_id):
@@ -1655,6 +1801,28 @@ def get_trainer_by_id(request, trainer_id):
 
 
 
+class TrainerDetailView(APIView):
+    """Retrieve a specific trainer by ID along with their attendance records"""
+    
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, trainer_id):
+        trainer = get_object_or_404(User, id=trainer_id, user_type="trainer")
+        trainer_data = UserSerializer(trainer).data
+
+        # Fetch attendance records for this trainer
+        attendance_records = Attendance.objects.filter(user=trainer)
+        attendance_data = AttendanceSerializer(attendance_records, many=True).data
+
+        return Response(
+            {
+                "trainer": trainer_data,
+                "attendance": attendance_data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 class ChatMessageListView(generics.ListAPIView):
     serializer_class = ChatMessageSerializer
 
@@ -1685,3 +1853,49 @@ class SendMessageView(APIView):
         chat_message = ChatMessage.objects.create(sender=sender, receiver=receiver, message=message_text)
 
         return Response({"message": "Message sent successfully!"}, status=status.HTTP_201_CREATED)
+
+
+
+class TrainerMessagesView(generics.ListAPIView):
+    """API view to list messages received and sent by a trainer"""
+
+    serializer_class = ChatMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        trainer_id = self.kwargs["trainer_id"]
+        return ChatMessage.objects.filter(
+            sender_id=trainer_id  # Messages sent by the trainer
+        ) | ChatMessage.objects.filter(
+            receiver_id=trainer_id  # Messages received by the trainer
+        ).order_by("timestamp")
+
+
+
+
+class GetUserBySenderIDView(generics.RetrieveAPIView):
+    """API view to retrieve user details by sender_id"""
+
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        sender_id = self.kwargs["sender_id"]
+        return User.objects.get(id=sender_id)
+
+
+
+class TrainerSendRecievedMessageListView(generics.ListAPIView):
+    """API to get messages sent and received by a trainer from a specific user"""
+    
+    serializer_class = ChatMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        trainer_id = self.kwargs["trainer_id"]
+        user_id = self.kwargs["user_id"]
+        
+        return ChatMessage.objects.filter(
+            sender_id__in=[trainer_id, user_id],
+            receiver_id__in=[trainer_id, user_id]
+        ).order_by("timestamp")

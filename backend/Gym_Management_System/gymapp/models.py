@@ -193,8 +193,8 @@ class Attendance(models.Model):
         choices=[("present", "Present"), ("absent", "Absent")],
         default="present",
     )
-    check_in_time = models.DateTimeField(null=True, blank=True)
-    check_out_time = models.DateTimeField(null=True, blank=True)
+    check_in_time = models.TimeField(null=True, blank=True)
+    check_out_time = models.TimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
