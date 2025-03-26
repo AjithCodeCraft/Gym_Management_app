@@ -30,6 +30,7 @@ from rest_framework.decorators import (
     permission_classes,
     authentication_classes,
 )
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 from django.contrib.auth.hashers import make_password, check_password
@@ -448,8 +449,9 @@ def login_user(request):
             {
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
+                "id":user.id,
                 "user_id": user.user_id,
-                "email": user.email,
+                "email": user.email, 
                 "name": user.name,
                 "user_type": user.user_type,
             },
@@ -472,7 +474,6 @@ def login_user(request):
 def list_subscriptions(request):
     if (
         not request.user.is_authenticated
-        or getattr(request.user, "user_type", "") != "admin"
     ):
         return Response(
             {"detail": "You do not have permission to perform this action."},
@@ -1902,3 +1903,39 @@ class TrainerSendRecievedMessageListView(generics.ListAPIView):
             sender_id__in=[trainer_id, user_id],
             receiver_id__in=[trainer_id, user_id]
         ).order_by("timestamp")
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_subscriptions_for_user(request):
+    # Authenticate user from token
+    auth = JWTAuthentication()
+    user_auth_tuple = auth.authenticate(request)
+
+    if user_auth_tuple is None:
+        return Response(
+            {"detail": "Invalid or missing access token."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    user, _ = user_auth_tuple  # Extract the authenticated user
+
+    # Fetch subscriptions from UserSubscription model
+    user_subscriptions = UserSubscription.objects.filter(user=user).select_related("subscription")
+    
+    # Serialize subscriptions
+    subscriptions_data = [
+        {
+            "id": us.subscription.id,
+            "name": us.subscription.name,
+            "duration": us.subscription.duration,
+            "price": us.subscription.price,
+            "start_date": us.start_date,
+            "end_date": us.end_date,
+            "status": us.status
+        }
+        for us in user_subscriptions
+    ]
+
+    return Response(subscriptions_data, status=status.HTTP_200_OK)

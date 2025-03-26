@@ -1,17 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, Alert } from 'react-native';
-// import PlanCard from './PlanCard';
-// import FeaturesCard from './FeaturesCard';
-// import UpgradeOptionsModal from './UpgradeOptionsModal';
-// import TrainerSelectionModal from './TrainerSelectionModal';
-// import GymDetails from './GymDetails';
-// import styles from './styles';
+import { ScrollView, Alert, View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import PlanCard from '@/components/gym/PlanCard';
 import FeaturesCard from '@/components/gym/FeaturesCard';
 import UpgradeOptionsModal from '@/components/gym/UpgradeOptionsModal';
 import TrainerSelectionModal from '@/components/gym/TrainerSelectionModal';
-import styles from '@/components/gym/styles';
 import GymDetails from '@/components/gym/GymDetails';
+import styles from '@/components/gym/styles'; // Ensure this import is correct
+import { apiAuth } from '@/api/axios';
 
 // Define Plan type
 type Plan = {
@@ -33,49 +28,6 @@ type Trainer = {
   experience: string;
   availability: string;
 };
-
-// Sample user plan data (would come from your backend in a real app)
-const userPlan = {
-  currentPlan: "Basic",
-  startDate: "2025-01-15",
-  expiryDate: "2025-03-10", // Set close to current date to show expiry warning
-  isActive: true,
-};
-
-// Plans data
-const plans = [
-  {
-    name: "Basic",
-    price: { monthly: 999, quarterly: 2499, yearly: 8999 },
-    features: [
-      "Access to gym floor",
-      "Locker facility",
-      "Cardio & strength training",
-      "No personal trainer",
-    ],
-  },
-  {
-    name: "Pro",
-    price: { monthly: 1999, quarterly: 5499, yearly: 17999 },
-    features: [
-      "All Basic plan benefits",
-      "Personalized workout plan",
-      "Group training sessions",
-      "Priority locker access",
-    ],
-    highlighted: true,
-  },
-  {
-    name: "Elite",
-    price: { monthly: 2999, quarterly: 7999, yearly: 24999 },
-    features: [
-      "All Pro plan benefits",
-      "1-on-1 Personal Trainer",
-      "Diet consultation",
-      "Unlimited guest passes",
-    ],
-  },
-];
 
 // Sample trainers data
 const trainers = [
@@ -100,18 +52,76 @@ const Gym: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "quarterly" | "yearly">("monthly");
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+  const [userPlan, setUserPlan] = useState<any>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true); // State for loading indicator
 
   useEffect(() => {
-    // Calculate days until expiry
-    const calculateDaysUntilExpiry = () => {
-      const today = new Date();
-      const expiry = new Date(userPlan.expiryDate);
-      const timeDiff = expiry.getTime() - today.getTime();
-      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-      return daysDiff;
+    const fetchSubscriptions = async () => {
+      try {
+        const response = await apiAuth.get('subscriptions/user/');
+        const data = response.data;
+
+        console.log('API Response:', data); // Debug: Log the API response
+
+        // Assuming the API response is an array of subscription objects
+        const subscriptions = data;
+
+        if (!Array.isArray(subscriptions)) {
+          console.error('Expected subscriptions to be an array but got:', subscriptions);
+          return;
+        }
+
+        // Extract user plan details from the first subscription object
+        const userPlanData = subscriptions[0];
+
+        console.log('User Plan Data:', userPlanData); // Debug: Log the user plan data
+
+        // Set user plan
+        setUserPlan({
+          currentPlan: userPlanData.name, // Ensure this matches the plan name
+          startDate: userPlanData.start_date,
+          expiryDate: userPlanData.end_date,
+          isActive: userPlanData.status === 'active',
+        });
+
+        // Arrange plans based on duration
+        const arrangedPlans: Plan[] = subscriptions.map((subscription: any) => {
+          const price = { monthly: 0, quarterly: 0, yearly: 0 };
+          if (subscription.duration === 1) price.monthly = subscription.price;
+          if (subscription.duration === 3) price.quarterly = subscription.price; // Assuming 3 months for quarterly
+          if (subscription.duration === 12) price.yearly = subscription.price;
+
+          return {
+            name: subscription.name,
+            price,
+            features: subscription.features || [], // Assuming features might be missing
+            highlighted: subscription.highlighted || false,
+          };
+        });
+
+        console.log('Arranged Plans:', arrangedPlans); // Debug: Log the arranged plans
+
+        setPlans(arrangedPlans);
+
+        // Calculate days until expiry
+        const calculateDaysUntilExpiry = () => {
+          const today = new Date();
+          const expiry = new Date(userPlanData.end_date);
+          const timeDiff = expiry.getTime() - today.getTime();
+          const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+          return daysDiff;
+        };
+
+        setDaysUntilExpiry(calculateDaysUntilExpiry());
+      } catch (error) {
+        console.error('Error fetching subscriptions:', error);
+      } finally {
+        setLoading(false); // Stop loading indicator
+      }
     };
 
-    setDaysUntilExpiry(calculateDaysUntilExpiry());
+    fetchSubscriptions();
   }, []);
 
   const handleUpgradeRequest = (plan: Plan) => {
@@ -163,15 +173,27 @@ const Gym: React.FC = () => {
   };
 
   // Find current plan details
-  const currentPlanDetails = plans.find(plan => plan.name === userPlan.currentPlan);
+  const currentPlanDetails = plans.find(plan => plan.name === userPlan?.currentPlan);
+
+  console.log('Current Plan Details:', currentPlanDetails); // Debug: Log the current plan details
+
+  if (loading) {
+    return (
+      <View style={localStyles.loadingContainer}>
+        <ActivityIndicator size="large" color="orange" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
-      <PlanCard
-        userPlan={userPlan}
-        daysUntilExpiry={daysUntilExpiry}
-        onUpgradePress={() => setShowUpgradeOptions(true)}
-      />
+      {userPlan && (
+        <PlanCard
+          userPlan={userPlan}
+          daysUntilExpiry={daysUntilExpiry}
+          onUpgradePress={() => setShowUpgradeOptions(true)}
+        />
+      )}
 
       {currentPlanDetails && <FeaturesCard features={currentPlanDetails.features} />}
 
@@ -189,7 +211,7 @@ const Gym: React.FC = () => {
         billingCycle={billingCycle}
         setBillingCycle={setBillingCycle}
         onUpgradeRequest={handleUpgradeRequest}
-        currentPlan={userPlan.currentPlan}
+        currentPlan={userPlan?.currentPlan}
       />
 
       <TrainerSelectionModal
@@ -198,8 +220,19 @@ const Gym: React.FC = () => {
         trainers={trainers}
         onTrainerSelect={handleTrainerSelect}
       />
+
+      
     </ScrollView>
   );
 };
+
+const localStyles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff', // Ensure the background color matches your app's theme
+  },
+});
 
 export default Gym;
