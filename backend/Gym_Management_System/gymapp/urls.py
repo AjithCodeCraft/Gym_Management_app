@@ -17,6 +17,7 @@ from .views import (
     get_default_workout,
     get_trainer_by_id,
     list_subscriptions,
+    list_subscriptions_for_user,
     list_trainers,
     list_users,
     list_users_and_trainers,
@@ -179,8 +180,11 @@ urlpatterns = [
         TrainerSendRecievedMessageListView.as_view(), 
         name="trainer-messages"),
 
+    path(
+        "subscriptions/user/", 
+        list_subscriptions_for_user, 
+        name="list_subscriptions"),
 
-
-
+ 
 ]
 
