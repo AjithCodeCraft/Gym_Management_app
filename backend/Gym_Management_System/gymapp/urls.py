@@ -1,7 +1,6 @@
 from django.urls import path
 
 from .views import (
-
     DailyWorkoutView,
     GetUserBySenderIDView,
     TrainerAttendanceCheckInView,
@@ -43,13 +42,12 @@ from .views import (
     AttendanceCheckInView,
     AttendanceCheckOutView,
     AttendanceListView,
-    ChatMessageListView, 
-    SendMessageView
-
+    ChatMessageListView,
+    SendMessageView,
+    get_user_attendance,
 )
 
 urlpatterns = [
-
     path("send-otp/", send_otp, name="send-otp"),
     path("verify-otp/", verify_otp, name="verify-otp"),
     path("register/", register_user, name="register-user"),
@@ -79,7 +77,9 @@ urlpatterns = [
     ),
     path("update_user_details/", update_user_details, name="update_subscription"),
     path(
-        "update-trainer-details/", UpdateTrainerDetails.as_view(), name="update_trainer_details"
+        "update-trainer-details/",
+        UpdateTrainerDetails.as_view(),
+        name="update_trainer_details",
     ),
     path(
         "nutrition-goals/<str:date_str>/",
@@ -111,10 +111,7 @@ urlpatterns = [
         user_payments_with_subscription,
         name="user-payments-with-subscription",
     ),
-    path(
-        "sleep-logs/", 
-        sleep_log_list_create_update, 
-        name="sleep-logs"),
+    path("sleep-logs/", sleep_log_list_create_update, name="sleep-logs"),
     path(
         "user/<str:firebase_id>/",
         get_user_by_firebase_id,
@@ -140,51 +137,46 @@ urlpatterns = [
         AttendanceListView.as_view(),
         name="attendance-list",
     ),
+    path("trainers/<int:trainer_id>/", get_trainer_by_id, name="get_trainer_by_id"),
     path(
-        'trainers/<int:trainer_id>/', 
-        get_trainer_by_id,
-        name='get_trainer_by_id'),
+        "messages/<int:user_id>/<int:trainer_id>/",
+        ChatMessageListView.as_view(),
+        name="get_messages",
+    ),
+    path("messages/send/", SendMessageView.as_view(), name="send_message"),
     path(
-        "messages/<int:user_id>/<int:trainer_id>/", 
-        ChatMessageListView.as_view(), 
-        name="get_messages"),
+        "trainer/checkin/",
+        TrainerAttendanceCheckInView.as_view(),
+        name="trainer-checkin",
+    ),
     path(
-        "messages/send/", 
-        SendMessageView.as_view(), 
-        name="send_message"),
+        "trainer/checkout/",
+        TrainerAttendanceCheckOutView.as_view(),
+        name="trainer-checkout",
+    ),
     path(
-        "trainer/checkin/", 
-        TrainerAttendanceCheckInView.as_view(), 
-        name="trainer-checkin"),
-    path("trainer/checkout/", 
-        TrainerAttendanceCheckOutView.as_view(), 
-        name="trainer-checkout"),
+        "trainer/attendance/",
+        TrainerAttendanceListView.as_view(),
+        name="trainer-attendance-list",
+    ),
     path(
-        "trainer/attendance/", 
-         TrainerAttendanceListView.as_view(), 
-         name="trainer-attendance-list"),
+        "trainer/<int:trainer_id>/", TrainerDetailView.as_view(), name="trainer-detail"
+    ),
     path(
-        "trainer/<int:trainer_id>/", 
-        TrainerDetailView.as_view(), 
-        name="trainer-detail"),
+        "trainer/<int:trainer_id>/messages/",
+        TrainerMessagesView.as_view(),
+        name="trainer-messages",
+    ),
     path(
-        "trainer/<int:trainer_id>/messages/", 
-        TrainerMessagesView.as_view(), 
-        name="trainer-messages"),
+        "user/sender/<int:sender_id>/",
+        GetUserBySenderIDView.as_view(),
+        name="get-user-by-sender",
+    ),
     path(
-        "user/sender/<int:sender_id>/", 
-        GetUserBySenderIDView.as_view(), 
-        name="get-user-by-sender"),
-    path(
-        "trainer/<int:trainer_id>/user/<int:user_id>/messages/", \
-        TrainerSendRecievedMessageListView.as_view(), 
-        name="trainer-messages"),
-
-    path(
-        "subscriptions/user/", 
-        list_subscriptions_for_user, 
-        name="list_subscriptions"),
-
- 
+        "trainer/<int:trainer_id>/user/<int:user_id>/messages/",
+        TrainerSendRecievedMessageListView.as_view(),
+        name="trainer-messages",
+    ),
+    path("subscriptions/user/", list_subscriptions_for_user, name="list_subscriptions"),
+    path("user_attendance/", get_user_attendance, name="get_user_attendance"),
 ]
-

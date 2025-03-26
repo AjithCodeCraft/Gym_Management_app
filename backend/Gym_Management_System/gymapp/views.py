@@ -17,7 +17,7 @@ from .models import (
     DefaultWorkout,
     SleepLog,
     Attendance,
-    ChatMessage
+    ChatMessage,
 )
 from rest_framework.decorators import (
     api_view,
@@ -36,7 +36,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.hashers import make_password, check_password
 from firebase_admin import auth
 from rest_framework.response import Response
-from rest_framework import status,generics
+from rest_framework import status, generics
 from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
 import requests
@@ -53,7 +53,7 @@ from .serializers import (
     SleepLogSerializer,
     AttendanceSerializer,
     PaymentSerializer,
-    ChatMessageSerializer
+    ChatMessageSerializer,
 )
 from datetime import datetime
 
@@ -449,9 +449,9 @@ def login_user(request):
             {
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
-                "id":user.id,
+                "id": user.id,
                 "user_id": user.user_id,
-                "email": user.email, 
+                "email": user.email,
                 "name": user.name,
                 "user_type": user.user_type,
             },
@@ -472,9 +472,7 @@ def login_user(request):
 
 @api_view(["GET"])
 def list_subscriptions(request):
-    if (
-        not request.user.is_authenticated
-    ):
+    if not request.user.is_authenticated:
         return Response(
             {"detail": "You do not have permission to perform this action."},
             status=status.HTTP_403_FORBIDDEN,
@@ -621,9 +619,10 @@ def delete_all(request):
 def list_users_and_trainers(request):
 
     if not request.user.is_authenticated:
-        return Response({"detail": "You do not have permission to perform this action."},
-                        status=status.HTTP_403_FORBIDDEN)
-
+        return Response(
+            {"detail": "You do not have permission to perform this action."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     user_type = request.query_params.get("type")
     if user_type not in ["user", "trainer"]:
@@ -821,30 +820,28 @@ def update_user_details(request):
         )
 
 
-
 class UpdateTrainerDetails(APIView):
     def put(self, request):
         if not request.user.is_authenticated:
-            return Response({"detail": "You do not have permission to perform this action."},
-                            status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "You do not have permission to perform this action."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-        email = request.data.get('email')
-        specialization = request.data.get('specialization')
-        experience_years = request.data.get('experience_years')
-        qualifications = request.data.get('qualifications')
-        availability = request.data.get('availability')
-        salary = request.data.get('salary')
-        is_active = request.data.get('is_active')  # Enable or disable trainer
-        phone_number = request.data.get('phone_number')  # Update phone number
-        gender = request.data.get('gender')  # Update gender
-        name = request.data.get('name')  # Update name
-        date_of_birth = request.data.get('date_of_birth')  # Update date of birth
-
-
-    
+        email = request.data.get("email")
+        specialization = request.data.get("specialization")
+        experience_years = request.data.get("experience_years")
+        qualifications = request.data.get("qualifications")
+        availability = request.data.get("availability")
+        salary = request.data.get("salary")
+        is_active = request.data.get("is_active")  # Enable or disable trainer
+        phone_number = request.data.get("phone_number")  # Update phone number
+        gender = request.data.get("gender")  # Update gender
+        name = request.data.get("name")  # Update name
+        date_of_birth = request.data.get("date_of_birth")  # Update date of birth
 
         try:
-            user = User.objects.get(email=email, user_type='trainer')
+            user = User.objects.get(email=email, user_type="trainer")
             trainer_profile = TrainerProfile.objects.get(user=user)
 
             if is_active is not None:
@@ -870,17 +867,26 @@ class UpdateTrainerDetails(APIView):
             if salary:
                 trainer_profile.salary = salary
 
-
             trainer_profile.save()
 
-
-            return Response({'message': 'Trainer details updated successfully'}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Trainer details updated successfully"},
+                status=status.HTTP_200_OK,
+            )
         except User.DoesNotExist:
-            return Response({'error': 'Trainer not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Trainer not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         except TrainerProfile.DoesNotExist:
-            return Response({'error': 'Trainer profile not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Trainer profile not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
-            return Response({'error': f'Unexpected error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Unexpected error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class NutritionGoalView(APIView):
 
@@ -1471,7 +1477,7 @@ def view_assigned_users_for_trainer(request, id):
 
         # Combine user and attendance data
         user_data = user_serializer.data[users.index(user)]
-        user_data['attendance'] = attendance_serializer.data
+        user_data["attendance"] = attendance_serializer.data
         response_data.append(user_data)
 
     return Response({"assigned_users": response_data}, status=status.HTTP_200_OK)
@@ -1621,9 +1627,9 @@ class AttendanceCheckInView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-
-        return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED)
-
+        return Response(
+            AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED
+        )
 
 
 class TrainerAttendanceCheckInView(APIView):
@@ -1679,8 +1685,9 @@ class TrainerAttendanceCheckInView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED)
-
+        return Response(
+            AttendanceSerializer(attendance_record).data, status=status.HTTP_201_CREATED
+        )
 
 
 class TrainerAttendanceCheckOutView(APIView):
@@ -1747,7 +1754,6 @@ class TrainerAttendanceCheckOutView(APIView):
         )
 
 
-
 class TrainerAttendanceListView(APIView):
     """API for trainers to view their own check-in and check-out history"""
 
@@ -1762,22 +1768,29 @@ class TrainerAttendanceListView(APIView):
             )
 
         # Fetch attendance records where the logged-in user is a trainer
-        attendance_records = Attendance.objects.filter(user=trainer).order_by("-created_at")
+        attendance_records = Attendance.objects.filter(user=trainer).order_by(
+            "-created_at"
+        )
 
         if not attendance_records.exists():
             return Response(
-                {"error": "No attendance records found"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "No attendance records found"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(AttendanceSerializer(attendance_records, many=True).data, status=status.HTTP_200_OK)
+        return Response(
+            AttendanceSerializer(attendance_records, many=True).data,
+            status=status.HTTP_200_OK,
+        )
 
 
-
-@api_view(['GET'])
+@api_view(["GET"])
 def get_trainer_by_id(request, trainer_id):
     if not request.user.is_authenticated:
-        return Response({"detail": "You do not have permission to perform this action."},
-                        status=status.HTTP_403_FORBIDDEN)
+        return Response(
+            {"detail": "You do not have permission to perform this action."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     # Create a unique cache key
     cache_key = f"trainer_detail_{trainer_id}"
@@ -1789,7 +1802,11 @@ def get_trainer_by_id(request, trainer_id):
 
     try:
         # Fetch the trainer (ensure user_type is 'trainer')
-        trainer = get_object_or_404(User.objects.select_related('trainer_profile'), id=trainer_id, user_type="trainer")
+        trainer = get_object_or_404(
+            User.objects.select_related("trainer_profile"),
+            id=trainer_id,
+            user_type="trainer",
+        )
 
         # Serialize the trainer
         serializer = LightweightUserSerializer(trainer)
@@ -1800,14 +1817,13 @@ def get_trainer_by_id(request, trainer_id):
         print(f"Error fetching trainer: {e}")
         return Response(
             {"detail": "An error occurred while fetching the trainer."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-
 
 
 class TrainerDetailView(APIView):
     """Retrieve a specific trainer by ID along with their attendance records"""
-    
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, trainer_id):
@@ -1823,7 +1839,7 @@ class TrainerDetailView(APIView):
                 "trainer": trainer_data,
                 "attendance": attendance_data,
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
 
@@ -1831,13 +1847,11 @@ class ChatMessageListView(generics.ListAPIView):
     serializer_class = ChatMessageSerializer
 
     def get_queryset(self):
-        user_id = self.kwargs['user_id']
-        trainer_id = self.kwargs['trainer_id']
+        user_id = self.kwargs["user_id"]
+        trainer_id = self.kwargs["trainer_id"]
         return ChatMessage.objects.filter(
-            sender_id__in=[user_id, trainer_id],
-            receiver_id__in=[user_id, trainer_id]
+            sender_id__in=[user_id, trainer_id], receiver_id__in=[user_id, trainer_id]
         ).order_by("timestamp")
-
 
 
 class SendMessageView(APIView):
@@ -1851,13 +1865,18 @@ class SendMessageView(APIView):
             sender = User.objects.get(id=sender_id)
             receiver = User.objects.get(id=receiver_id)
         except User.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         # Save message to DB
-        chat_message = ChatMessage.objects.create(sender=sender, receiver=receiver, message=message_text)
+        chat_message = ChatMessage.objects.create(
+            sender=sender, receiver=receiver, message=message_text
+        )
 
-        return Response({"message": "Message sent successfully!"}, status=status.HTTP_201_CREATED)
-
+        return Response(
+            {"message": "Message sent successfully!"}, status=status.HTTP_201_CREATED
+        )
 
 
 class TrainerMessagesView(generics.ListAPIView):
@@ -1872,9 +1891,9 @@ class TrainerMessagesView(generics.ListAPIView):
             sender_id=trainer_id  # Messages sent by the trainer
         ) | ChatMessage.objects.filter(
             receiver_id=trainer_id  # Messages received by the trainer
-        ).order_by("timestamp")
-
-
+        ).order_by(
+            "timestamp"
+        )
 
 
 class GetUserBySenderIDView(generics.RetrieveAPIView):
@@ -1888,22 +1907,19 @@ class GetUserBySenderIDView(generics.RetrieveAPIView):
         return User.objects.get(id=sender_id)
 
 
-
 class TrainerSendRecievedMessageListView(generics.ListAPIView):
     """API to get messages sent and received by a trainer from a specific user"""
-    
+
     serializer_class = ChatMessageSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         trainer_id = self.kwargs["trainer_id"]
         user_id = self.kwargs["user_id"]
-        
-        return ChatMessage.objects.filter(
-            sender_id__in=[trainer_id, user_id],
-            receiver_id__in=[trainer_id, user_id]
-        ).order_by("timestamp")
 
+        return ChatMessage.objects.filter(
+            sender_id__in=[trainer_id, user_id], receiver_id__in=[trainer_id, user_id]
+        ).order_by("timestamp")
 
 
 @api_view(["GET"])
@@ -1916,14 +1932,16 @@ def list_subscriptions_for_user(request):
     if user_auth_tuple is None:
         return Response(
             {"detail": "Invalid or missing access token."},
-            status=status.HTTP_401_UNAUTHORIZED
+            status=status.HTTP_401_UNAUTHORIZED,
         )
 
     user, _ = user_auth_tuple  # Extract the authenticated user
 
     # Fetch subscriptions from UserSubscription model
-    user_subscriptions = UserSubscription.objects.filter(user=user).select_related("subscription")
-    
+    user_subscriptions = UserSubscription.objects.filter(user=user).select_related(
+        "subscription"
+    )
+
     # Serialize subscriptions
     subscriptions_data = [
         {
@@ -1933,9 +1951,29 @@ def list_subscriptions_for_user(request):
             "price": us.subscription.price,
             "start_date": us.start_date,
             "end_date": us.end_date,
-            "status": us.status
+            "status": us.status,
         }
         for us in user_subscriptions
     ]
 
     return Response(subscriptions_data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def get_user_attendance(request):
+
+    if not request.user.is_authenticated:
+        return Response(
+            {"message": "You are not logged in!"}, status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    attendance_data = Attendance.objects.filter(user=request.user, status="present").order_by('-check_in_time')
+
+    if not attendance_data:
+        return Response(
+            {"message": "No attendance data found!"}, status=status.HTTP_404_NOT_FOUND
+        )
+
+    serializer = AttendanceSerializer(attendance_data, many=True)
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
