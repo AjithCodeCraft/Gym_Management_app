@@ -18,9 +18,13 @@ export default function RootLayout() {
     >
       {/* Ensure this name matches the actual file in app/UserProfile.tsx */}
       <Stack.Screen name="UserProfile" options={{ title: "Profile" }} />
+      <Stack.Screen name="Chat" />
+
+     
 
       {/* Main Tab Screens */}
       <Stack.Screen name="(tabs)" />
+
     </Stack>
   );
 }
