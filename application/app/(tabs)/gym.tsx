@@ -64,7 +64,6 @@ const Gym: React.FC = () => {
         const response = await apiAuth.get('subscriptions/user/');
         const data = response.data;
 
-        console.log('API Response:', data); // Debug: Log the API response
 
         // Assuming the API response is an array of subscription objects
         const subscriptions = data;
@@ -77,7 +76,6 @@ const Gym: React.FC = () => {
         // Extract user plan details from the first subscription object
         const userPlanData = subscriptions[0];
 
-        console.log('User Plan Data:', userPlanData); // Debug: Log the user plan data
 
         // Set user plan
         setUserPlan({
@@ -102,7 +100,7 @@ const Gym: React.FC = () => {
           };
         });
 
-        console.log('Arranged Plans:', arrangedPlans); // Debug: Log the arranged plans
+       
 
         setPlans(arrangedPlans);
 
@@ -121,7 +119,7 @@ const Gym: React.FC = () => {
         const trainerResponse = await apiAuth.get('assigned-trainer/user/');
         const trainerData = trainerResponse.data;
 
-        console.log('Trainer Data:', trainerData); // Debug: Log the trainer data
+        
 
         setTrainerDetails({
           id: trainerData.trainer_id,
@@ -192,10 +190,7 @@ const Gym: React.FC = () => {
     );
   };
 
-  // Find current plan details
-  const currentPlanDetails = plans.find(plan => plan.name === userPlan?.currentPlan);
-
-  console.log('Current Plan Details:', currentPlanDetails); // Debug: Log the current plan details
+  
 
   if (loading) {
     return (

@@ -1960,7 +1960,6 @@ def list_subscriptions_for_user(request):
     return Response(subscriptions_data, status=status.HTTP_200_OK)
 
 
-<<<<<<< Updated upstream
 @api_view(["GET"])
 def get_user_attendance(request):
 
@@ -1979,7 +1978,6 @@ def get_user_attendance(request):
     serializer = AttendanceSerializer(attendance_data, many=True)
 
     return Response(serializer.data, status=status.HTTP_200_OK)
-=======
 
 
 class GetAssignedTrainerView(APIView):
@@ -2030,4 +2028,3 @@ class UserSendReceivedMessageListView(generics.ListAPIView):
 
 
  
->>>>>>> Stashed changes

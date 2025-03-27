@@ -175,17 +175,14 @@ urlpatterns = [
         name="get-user-by-sender",
     ),
     path(
-<<<<<<< Updated upstream
+
         "trainer/<int:trainer_id>/user/<int:user_id>/messages/",
         TrainerSendRecievedMessageListView.as_view(),
         name="trainer-messages",
     ),
     path("subscriptions/user/", list_subscriptions_for_user, name="list_subscriptions"),
     path("user_attendance/", get_user_attendance, name="get_user_attendance"),
-=======
-        "user/sender/<int:sender_id>/", 
-        GetUserBySenderIDView.as_view(), 
-        name="get-user-by-sender"),
+
     path(
         "trainer/<int:trainer_id>/user/<int:user_id>/messages/", \
         TrainerSendRecievedMessageListView.as_view(), 
@@ -204,6 +201,6 @@ urlpatterns = [
         name="user-messages"),
  
 
- 
->>>>>>> Stashed changes
+
 ]
+ 

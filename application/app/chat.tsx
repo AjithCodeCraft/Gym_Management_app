@@ -46,7 +46,6 @@ export default function ChatScreen() {
           const response = await apiAuth.get(`chat/trainer/${trainerId}/`);
           const fetchedMessages = response.data;
 
-          console.log('Fetched Messages:', fetchedMessages); // Debug: Log the fetched messages
 
           if (Array.isArray(fetchedMessages)) {
             // Assuming the API returns messages in the correct format
@@ -128,7 +127,6 @@ export default function ChatScreen() {
     }
   }, [trainerId, userId]);
 
-  console.log('Messages State:', messages); // Debug: Log the messages state
 
   if (loading) {
     return (
