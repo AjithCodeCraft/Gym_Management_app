@@ -35,6 +35,9 @@ export default function LoginPage() {
           }
         });
         await AsyncStorage.setItem("access_token", response.data.access);
+        console.log('Access',response.data.access)
+        await AsyncStorage.setItem("id", response.data.id.toString());
+
         setIsLoggedIn(true);
     } catch (error) {
         Alert.alert(

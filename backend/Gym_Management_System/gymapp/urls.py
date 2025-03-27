@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     DailyWorkoutView,
+    GetAssignedTrainerView,
     GetUserBySenderIDView,
     TrainerAttendanceCheckInView,
     TrainerAttendanceCheckOutView,
@@ -10,6 +11,7 @@ from .views import (
     TrainerMessagesView,
     TrainerSendRecievedMessageListView,
     UpdateTrainerDetails,
+    UserSendReceivedMessageListView,
     add_subscription,
     delete_all,
     delete_subscription,
@@ -173,10 +175,35 @@ urlpatterns = [
         name="get-user-by-sender",
     ),
     path(
+<<<<<<< Updated upstream
         "trainer/<int:trainer_id>/user/<int:user_id>/messages/",
         TrainerSendRecievedMessageListView.as_view(),
         name="trainer-messages",
     ),
     path("subscriptions/user/", list_subscriptions_for_user, name="list_subscriptions"),
     path("user_attendance/", get_user_attendance, name="get_user_attendance"),
+=======
+        "user/sender/<int:sender_id>/", 
+        GetUserBySenderIDView.as_view(), 
+        name="get-user-by-sender"),
+    path(
+        "trainer/<int:trainer_id>/user/<int:user_id>/messages/", \
+        TrainerSendRecievedMessageListView.as_view(), 
+        name="trainer-messages"),
+
+    path(
+        "subscriptions/user/", 
+        list_subscriptions_for_user, 
+        name="list_subscriptions"),
+    path("assigned-trainer/user/", 
+        GetAssignedTrainerView.as_view(), 
+        name="assigned-trainer"),
+    path(
+        "chat/trainer/<int:trainer_id>/", 
+        UserSendReceivedMessageListView.as_view(), 
+        name="user-messages"),
+ 
+
+ 
+>>>>>>> Stashed changes
 ]

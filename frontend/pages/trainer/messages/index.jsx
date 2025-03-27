@@ -49,19 +49,19 @@ const MessagesPage = () => {
         setMessages(prevMessages => {
           const existingIds = new Set(prevMessages.map(msg => msg.id));
           const newMessages = response.data.filter(msg => !existingIds.has(msg.id));
-          
+
           if (newMessages.length > 0) {
-            const newestMessage = newMessages.reduce((newest, current) => 
+            const newestMessage = newMessages.reduce((newest, current) =>
               new Date(current.timestamp) > new Date(newest.timestamp) ? current : newest
             );
             lastPollTimeRef.current = newestMessage.timestamp;
-            
+
             // Remove any temporary messages that have been confirmed
             const confirmedTempIds = new Set(newMessages.map(msg => msg.temp_id).filter(Boolean));
-            const filteredPrev = prevMessages.filter(msg => 
+            const filteredPrev = prevMessages.filter(msg =>
               !msg.temp_id || !confirmedTempIds.has(msg.temp_id)
             );
-            
+
             return [...filteredPrev, ...newMessages];
           }
           return prevMessages;
@@ -79,7 +79,7 @@ const MessagesPage = () => {
           const usersData = await Promise.all(
             newSenderIds.map(id => fetchUserDetails(id))
           );
-          
+
           setUsers(prevUsers => {
             const existingUserIds = new Set(prevUsers.map(user => user.id));
             const usersToAdd = usersData.filter(
@@ -138,17 +138,17 @@ const MessagesPage = () => {
       );
 
       // Update the temporary message with the actual one from server
-      setMessages(prev => prev.map(msg => 
+      setMessages(prev => prev.map(msg =>
         msg.temp_id === temp_id ? {
           ...response.data,
           // Keep the isSending state briefly for smooth transition
-          isSending: true 
+          isSending: true
         } : msg
       ));
 
       // After a brief delay, remove the sending state for smooth UI transition
       setTimeout(() => {
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.temp_id === temp_id ? response.data : msg
         ));
       }, 300);
@@ -158,8 +158,8 @@ const MessagesPage = () => {
       console.error('Failed to send message', error);
       setMessages(prev => prev.map(msg =>
         msg.temp_id === temp_id ? {
-          ...msg, 
-          isSending: false, 
+          ...msg,
+          isSending: false,
           failed: true,
           error: 'Failed to send message'
         } : msg
@@ -229,7 +229,7 @@ const MessagesPage = () => {
         <TrainerSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Navbar />
-          <main className="flex-1 overflow-y-auto bg-gray-50 p-6 flex items-center justify-center">
+          <main className="flex-1 overflow-hidden bg-gray-50 p-6 flex items-center justify-center">
             <div>Loading messages...</div>
           </main>
         </div>
@@ -242,14 +242,15 @@ const MessagesPage = () => {
       <TrainerSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="w-full md:w-1/3 bg-white rounded-lg shadow-sm">
+        <main className="flex-1 overflow-hidden bg-gray-50 p-6">
+          <div className="max-w-7xl mx-auto h-full">
+            <div className="flex flex-col md:flex-row gap-6 h-full">
+              {/* Clients List - Now with fixed height and scrollable content */}
+              <div className="w-full md:w-1/3 bg-white rounded-lg shadow-sm flex flex-col">
                 <div className="p-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold">Clients</h3>
                 </div>
-                <div className="divide-y divide-gray-200">
+                <div className="flex-1 overflow-y-auto">
                   {users.map(user => (
                     <div
                       key={user.id}
@@ -282,6 +283,7 @@ const MessagesPage = () => {
                 </div>
               </div>
 
+              {/* Messages Area - Now with fixed height and scrollable messages */}
               <div className="w-full md:w-2/3 bg-white rounded-lg shadow-sm flex flex-col">
                 <div className="p-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold">
@@ -290,7 +292,7 @@ const MessagesPage = () => {
                     ) : 'Messages'}
                   </h3>
                 </div>
-                <div className="flex-1 h-[calc(100vh-300px)] overflow-y-auto p-4">
+                <div className="flex-1 overflow-y-auto p-4">
                   {selectedUser ? (
                     <div className="space-y-4">
                       {getMessagesForUser(selectedUser).map(message => {

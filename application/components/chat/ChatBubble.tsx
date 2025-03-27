@@ -1,63 +1,44 @@
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-interface ChatBubbleProps {
+type ChatBubbleProps = {
   message: string;
   isMe: boolean;
   time: string;
-}
+};
 
-export default function ChatBubble({ message, isMe, time }: ChatBubbleProps) {
+const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isMe, time }) => {
   return (
-    <View style={[styles.container, isMe ? styles.me : styles.other]}>
-      <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-        <Text style={isMe ? styles.textMe : styles.textOther}>{message}</Text>
-        <Text style={[styles.time, isMe ? styles.timeMe : styles.timeOther]}>
-          {time}
-        </Text>
-      </View>
+    <View style={[styles.bubble, isMe ? styles.myMessage : styles.otherMessage]}>
+      <Text style={styles.messageText}>{message}</Text>
+      <Text style={styles.timeText}>{time}</Text>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 4,
-  },
-  me: {
-    alignItems: 'flex-end',
-  },
-  other: {
-    alignItems: 'flex-start',
-  },
   bubble: {
+    padding: 10,
+    borderRadius: 10,
+    marginVertical: 5,
     maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
   },
-  bubbleMe: {
-    backgroundColor: '#f97316',
-    borderBottomRightRadius: 4,
+  myMessage: {
+    backgroundColor: '#dcf8c6',
+    alignSelf: 'flex-end',
   },
-  bubbleOther: {
-    backgroundColor: '#e5e7eb',
-    borderBottomLeftRadius: 4,
+  otherMessage: {
+    backgroundColor: '#fff',
+    alignSelf: 'flex-start',
   },
-  textMe: {
-    color: 'white',
+  messageText: {
+    fontSize: 16,
   },
-  textOther: {
-    color: '#1f2937',
-  },
-  time: {
-    fontSize: 10,
-    marginTop: 4,
-  },
-  timeMe: {
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'right',
-  },
-  timeOther: {
-    color: 'rgba(0,0,0,0.5)',
-    textAlign: 'left',
+  timeText: {
+    fontSize: 12,
+    color: 'gray',
+    alignSelf: 'flex-end',
   },
 });
+
+export default ChatBubble;
