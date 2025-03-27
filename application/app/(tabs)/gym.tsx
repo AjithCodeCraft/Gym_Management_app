@@ -7,6 +7,7 @@ import TrainerSelectionModal from '@/components/gym/TrainerSelectionModal';
 import GymDetails from '@/components/gym/GymDetails';
 import styles from '@/components/gym/styles'; // Ensure this import is correct
 import { apiAuth } from '@/api/axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define Plan type
 type Plan = {
@@ -55,6 +56,7 @@ const Gym: React.FC = () => {
   const [userPlan, setUserPlan] = useState<any>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true); // State for loading indicator
+  const [trainerDetails, setTrainerDetails] = useState<Trainer | null>(null); // State for trainer details
 
   useEffect(() => {
     const fetchSubscriptions = async () => {
@@ -114,8 +116,26 @@ const Gym: React.FC = () => {
         };
 
         setDaysUntilExpiry(calculateDaysUntilExpiry());
+
+        // Fetch trainer details
+        const trainerResponse = await apiAuth.get('assigned-trainer/user/');
+        const trainerData = trainerResponse.data;
+
+        console.log('Trainer Data:', trainerData); // Debug: Log the trainer data
+
+        setTrainerDetails({
+          id: trainerData.trainer_id,
+          name: trainerData.trainer_name,
+          specialization: trainerData.specialization,
+          experience: `${trainerData.experience} years`,
+          availability: trainerData.availability,
+        });
+
+        // Store trainer_id in AsyncStorage
+        await AsyncStorage.setItem('trainer_id', trainerData.trainer_id.toString());
+        await AsyncStorage.setItem('trainer_name',trainerData.trainer_name)
       } catch (error) {
-        console.error('Error fetching subscriptions:', error);
+        console.error('Error fetching subscriptions or trainer details:', error);
       } finally {
         setLoading(false); // Stop loading indicator
       }
@@ -195,7 +215,12 @@ const Gym: React.FC = () => {
         />
       )}
 
-      {currentPlanDetails && <FeaturesCard features={currentPlanDetails.features} />}
+      {trainerDetails && <FeaturesCard features={[
+        `Name: ${trainerDetails.name}`,
+        `Specialization: ${trainerDetails.specialization}`,
+        `Experience: ${trainerDetails.experience}`,
+        `Availability: ${trainerDetails.availability.toLowerCase() === 'both' ? 'Morning and Evening' : trainerDetails.availability}`
+      ]} />}
 
       <GymDetails
         gymName={gymDetails.gymName}
@@ -221,7 +246,6 @@ const Gym: React.FC = () => {
         onTrainerSelect={handleTrainerSelect}
       />
 
-      
     </ScrollView>
   );
 };

@@ -42,6 +42,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
 from django.core.mail import send_mail
+from django.contrib.auth.models import AnonymousUser
 
 from .serializers import (
     LightweightUserSerializer,
@@ -1959,6 +1960,7 @@ def list_subscriptions_for_user(request):
     return Response(subscriptions_data, status=status.HTTP_200_OK)
 
 
+<<<<<<< Updated upstream
 @api_view(["GET"])
 def get_user_attendance(request):
 
@@ -1977,3 +1979,55 @@ def get_user_attendance(request):
     serializer = AttendanceSerializer(attendance_data, many=True)
 
     return Response(serializer.data, status=status.HTTP_200_OK)
+=======
+
+
+class GetAssignedTrainerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        if isinstance(user, AnonymousUser):
+            return Response(
+                {"detail": "Authentication credentials were not provided."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        
+        try:
+            assignment = TrainerAssignment.objects.select_related("trainer__trainer_profile").get(user=user)
+            trainer_profile = assignment.trainer.trainer_profile
+            data = {
+                "trainer_id": assignment.trainer.id,
+                "trainer_name": assignment.trainer.name,
+                "experience": trainer_profile.experience_years,
+                "specialization": trainer_profile.specialization,
+                "availability": trainer_profile.availability,
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        except TrainerAssignment.DoesNotExist:
+            return Response(
+                {"detail": "No trainer assigned to this user."},
+                status=status.HTTP_404_NOT_FOUND, 
+            )
+
+
+
+class UserSendReceivedMessageListView(generics.ListAPIView):
+    """API to get messages sent and received by a user from a specific trainer"""
+    
+    serializer_class = ChatMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.request.user.id  # Get user ID from access token
+        trainer_id = self.kwargs["trainer_id"]
+        
+        return ChatMessage.objects.filter(
+            sender_id__in=[user_id, trainer_id],
+            receiver_id__in=[user_id, trainer_id]
+        ).order_by("timestamp")
+
+
+ 
+>>>>>>> Stashed changes

@@ -27,10 +27,10 @@ export default function ChatInput({ onSend }: ChatInputProps) {
         multiline
       />
       <TouchableOpacity onPress={handleSend} style={styles.sendButton}>
-        <Ionicons 
-          name="send" 
-          size={24} 
-          color={text ? "#f97316" : "#9ca3af"} 
+        <Ionicons
+          name="send"
+          size={24}
+          color={text ? "#f97316" : "#9ca3af"}
         />
       </TouchableOpacity>
     </View>

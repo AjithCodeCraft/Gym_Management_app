@@ -6,21 +6,23 @@ interface ChatHeaderProps {
   title: string;
 }
 
-export default function ChatHeader({ title }: ChatHeaderProps) {
-    const navigation = useNavigation();
-    
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text>←</Text> {/* Simple fallback */}
-          </TouchableOpacity>
-          <Text style={styles.title}>{title}</Text>
-          <View style={{ width: 24 }} />
-        </View>
-      </View>
-    );
-  }
+const ChatHeader: React.FC<ChatHeaderProps> = ({ title }) => {
+
+  return (
+
+    <View style={styles.container}>
+
+      <TouchableOpacity>
+
+        <Text style={styles.title}>{title}</Text>
+
+      </TouchableOpacity>
+
+    </View>
+
+  );
+
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -40,3 +42,5 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
 });
+
+export default ChatHeader;

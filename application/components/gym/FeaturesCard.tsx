@@ -8,7 +8,7 @@ interface FeaturesCardProps {
 const FeaturesCard: React.FC<FeaturesCardProps> = ({ features }) => {
   return (
     <View style={styles.featuresCard}>
-      <Text style={styles.featuresHeader}>Your Plan Features</Text>
+      <Text style={styles.featuresHeader}>Your Assigned Trainer</Text>
       {features.map((feature, index) => (
         <View key={index} style={styles.featureItem}>
           <Text style={styles.bulletPoint}>•</Text>
