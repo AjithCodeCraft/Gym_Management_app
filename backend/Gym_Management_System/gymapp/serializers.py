@@ -51,7 +51,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
 
         fields = ['id', 'user_id', 'email', 'name', 'user_type', 'date_of_birth', 'gender', 
-                  'phone_number', 'profile_picture_url', 'is_active', 'created_at', 'updated_at', 'attendance','subscriptions']
+                  'phone_number', 'profile_picture_url', 'is_active', 'created_at', 'updated_at', 'attendance', 'subscriptions']
 
 
 
@@ -207,3 +207,17 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = ["id", "sender", "receiver", "sender_username", "receiver_username", "message", "timestamp"]
+    
+        
+class TrainerProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainerProfile
+        fields = ["specialization", "experience_years", "qualifications", "availability", "salary"]
+        
+        
+class TrainerSerializer(serializers.ModelSerializer):
+    trainer_profile = TrainerProfileSerializer()
+    class Meta:
+        model = User
+        fields = ["id", "user_id", "email", "name", "gender", "phone_number", "profile_picture_url", "trainer_profile"]
+        
