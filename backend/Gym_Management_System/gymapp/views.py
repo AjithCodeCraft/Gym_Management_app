@@ -47,6 +47,7 @@ from django.contrib.auth.models import AnonymousUser
 from .serializers import (
     LightweightUserSerializer,
     SubscriptionSerializer,
+    TrainerSerializer,
     UserSerializer,
     NutritionGoalSerializer,
     DefaultWorkoutSerializer,
@@ -596,17 +597,14 @@ def list_users(request):
 
 @api_view(["GET"])
 def list_trainers(request):
-    if (
-        not request.user.is_authenticated
-        or getattr(request.user, "user_type", "") != "admin"
-    ):
+    if not request.user.is_authenticated:
         return Response(
             {"detail": "You do not have permission to perform this action."},
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    trainers = User.objects.filter(user_type="trainer")
-    serializer = UserSerializer(trainers, many=True)
+    trainers = User.objects.filter(user_type="trainer").select_related("trainer_profile")
+    serializer = TrainerSerializer(trainers, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
