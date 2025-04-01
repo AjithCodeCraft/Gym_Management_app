@@ -31,6 +31,7 @@ from rest_framework.decorators import (
     authentication_classes,
 )
 from rest_framework_simplejwt.authentication import JWTAuthentication
+import firebase_admin
 
 
 from django.contrib.auth.hashers import make_password, check_password
@@ -66,7 +67,8 @@ from gradio_client import Client
 import re
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import MultipleObjectsReturned
-
+from firebase_admin import auth
+from firebase_admin.exceptions import FirebaseError
 # Create your views here.
 
 
@@ -381,7 +383,6 @@ def register_user(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
-
 @api_view(["POST"])
 def send_password_reset_email(request):
     email = request.data.get("email")
@@ -390,20 +391,32 @@ def send_password_reset_email(request):
         return Response({"error": "Email is required"}, status=400)
 
     try:
-        # Send password reset email using Firebase
-        link = auth.generate_password_reset_link(email)
-        send_mail(
-            subject="Reset Your Password",
-            message=f"Click the link below to reset your password:\n{link}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-            fail_silently=False,
-        )
-        return Response({"message": "Password reset email sent"}, status=200)
+        # Check if user exists first
+        try:
+            user = auth.get_user_by_email(email)
+        except auth.UserNotFoundError:
+            return Response({"error": "No user found with this email"}, status=404)
+        except ValueError as e:
+            return Response({"error": f"Invalid email: {str(e)}"}, status=400)
+
+        # Generate password reset link
+        try:
+            link = auth.generate_password_reset_link(email)
+            
+            send_mail(
+                subject="Reset Your Password",
+                message=f"Click the link below to reset your password:\n{link}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            return Response({"message": "Password reset email sent"}, status=200)
+            
+        except FirebaseError as e:
+            return Response({"error": f"Firebase error: {str(e)}"}, status=500)
 
     except Exception as e:
-        return Response({"error": f"Failed to send email: {str(e)}"}, status=500)
-
+        return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
 @api_view(["POST"])
 def login_user(request):

@@ -1,12 +1,22 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image, Alert, Modal, StyleSheet, ActivityIndicator } from "react-native";
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator, 
+  StyleSheet,
+  Alert
+} from "react-native";
 import { Redirect } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons"; // For icons
-import axios from "axios";
+import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from 'expo-constants';
 import api from '../api/axios';
 import LoadingSpinner from "@/components/LoadingSpinner";
+import ForgotPasswordModal from "@/components/ForgotPasswordModal";
+
 const API_URL = Constants.expoConfig?.extra?.API_URL;
 
 export default function LoginPage() {
@@ -14,65 +24,57 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // State for password visibility
-  const [isLoading, setIsLoading] = useState(false); // State for loading animation
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please enter both email and password!");
       return;
     }
-    setIsLoading(true); // Start loading animation
+    
+    setIsLoading(true);
     const credentials = {
       email: email,
       password: password
     };
+    
     try {
-        const response = await api.post(`/login/`, credentials, {
-          headers: {
-            "Content-Type": "application/json"
-          }
-        });
-        await AsyncStorage.setItem("access_token", response.data.access);
-        console.log('Access',response.data.access)
-        await AsyncStorage.setItem("id", response.data.id.toString());
-
-        setIsLoggedIn(true);
+      const response = await api.post(`/login/`, credentials, {
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+      await AsyncStorage.setItem("access_token", response.data.access);
+      await AsyncStorage.setItem("id", response.data.id.toString());
+      setIsLoggedIn(true);
     } catch (error) {
-        Alert.alert(
-            "Invalid Credentials",
-            `Please check your email and password!`
-        );
+      console.error("Login error:", error);
+      Alert.alert(
+        "Invalid Credentials",
+        "Please check your email and password!"
+      );
     } finally {
-        setIsLoading(false); // Stop loading animation
+      setIsLoading(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    // Dummy logic to send reset link
-    if (forgotPasswordEmail) {
-      Alert.alert("Reset Link Sent", `A reset link has been sent to ${forgotPasswordEmail}`);
-      setIsForgotPasswordModalVisible(false);
-    } else {
-      Alert.alert("Error", "Please enter your email address.");
-    }
-  };
-
-  // Redirect to home tab if logged in
   if (isLoggedIn) {
     return <Redirect href="/(tabs)/home" />;
   }
   
-  return isLoading ? <LoadingSpinner /> : (
+  return isLoading ? (
+    <LoadingSpinner />
+  ) : (
     <View style={styles.container}>
       {/* Left Side - Login Form */}
       <View style={styles.loginForm}>
         {/* Logo and Brand Name */}
         <View style={styles.logoContainer}>
           <Image
-            source={require("../assets/images/g308.png")} // Replace with your image path
+            source={require("../assets/images/g308.png")}
             style={styles.logo}
+            resizeMode="contain"
           />
           <Text style={styles.brandName}>FORTiFit.</Text>
         </View>
@@ -92,10 +94,12 @@ export default function LoginPage() {
             <TextInput
               style={styles.input}
               placeholder="m@example.com"
+              placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
 
@@ -103,7 +107,10 @@ export default function LoginPage() {
           <View style={styles.inputContainer}>
             <View style={styles.passwordHeader}>
               <Text style={styles.inputLabel}>Password</Text>
-              <TouchableOpacity onPress={() => setIsForgotPasswordModalVisible(true)}>
+              <TouchableOpacity 
+                onPress={() => setIsForgotPasswordModalVisible(true)}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
               </TouchableOpacity>
             </View>
@@ -111,11 +118,17 @@ export default function LoginPage() {
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Enter your password"
+                placeholderTextColor="#999"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+              >
                 <MaterialIcons
                   name={showPassword ? "visibility-off" : "visibility"}
                   size={24}
@@ -126,55 +139,38 @@ export default function LoginPage() {
           </View>
 
           {/* Login Button */}
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
+          <TouchableOpacity 
+            style={[
+              styles.loginButton,
+              isLoading && styles.loginButtonDisabled
+            ]} 
+            onPress={handleLogin} 
+            disabled={isLoading}
+            activeOpacity={0.7}
+          >
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
               <Text style={styles.loginButtonText}>Login</Text>
             )}
           </TouchableOpacity>
-
         </View>
       </View>
 
       {/* Right Side - Image (Hidden on small screens) */}
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: "https://via.placeholder.com/1920x1080" }} // Replace with your image URL
+          source={{ uri: "https://via.placeholder.com/1920x1080" }}
           style={styles.image}
+          resizeMode="cover"
         />
       </View>
 
       {/* Forgot Password Modal */}
-      <Modal
+      <ForgotPasswordModal
         visible={isForgotPasswordModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setIsForgotPasswordModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Forgot Password</Text>
-            <Text style={styles.modalSubtitle}>
-              Enter your email address and we'll send you a link to reset your password.
-            </Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Enter your email"
-              value={forgotPasswordEmail}
-              onChangeText={setForgotPasswordEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <TouchableOpacity style={styles.modalButton} onPress={handleForgotPassword}>
-              <Text style={styles.modalButtonText}>Send Reset Link</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsForgotPasswordModalVisible(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setIsForgotPasswordModalVisible(false)}
+      />
     </View>
   );
 }
@@ -183,6 +179,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: "row",
+    backgroundColor: "#fff",
   },
   loginForm: {
     flex: 1,
@@ -190,18 +187,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logoContainer: {
-    alignItems: "center", // Center the logo and brand name
+    alignItems: "center",
     marginBottom: 32,
   },
   logo: {
-    width: 80, // Adjust the width of the logo
-    height: 80, // Adjust the height of the logo
-    marginBottom: 16, // Space between logo and brand name
+    width: 80,
+    height: 80,
+    marginBottom: 16,
   },
   brandName: {
-    fontSize: 24, // Increase font size for brand name
-    fontWeight: "bold", // Make it bold
-    color: "#f97316", // Brand color
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#f97316",
   },
   formContainer: {
     width: "100%",
@@ -216,10 +213,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 8,
+    color: "#333",
   },
   formSubtitle: {
     fontSize: 14,
-    color: "gray",
+    color: "#666",
     textAlign: "center",
   },
   inputContainer: {
@@ -229,13 +227,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     marginBottom: 8,
+    color: "#333",
   },
   input: {
-    height: 40,
+    height: 48,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 12,
+    backgroundColor: "#f9f9f9",
+    color: "#333",
   },
   passwordHeader: {
     flexDirection: "row",
@@ -247,13 +248,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 12,
+    backgroundColor: "#f9f9f9",
   },
   passwordInput: {
     flex: 1,
-    height: 40,
+    height: 48,
+    color: "#333",
   },
   forgotPasswordText: {
     fontSize: 14,
@@ -262,72 +265,29 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     width: "100%",
-    height: 40,
+    height: 48,
     backgroundColor: "#f97316",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 16,
+    elevation: 2,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
   },
   loginButtonText: {
     color: "white",
     fontWeight: "500",
+    fontSize: 16,
   },
   imageContainer: {
     flex: 1,
     display: "none", // Hidden on small screens
+    backgroundColor: "#f5f5f5",
   },
   image: {
     width: "100%",
     height: "100%",
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // Dimmed background
-  },
-  modalContent: {
-    width: "80%",
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 24,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "gray",
-    marginBottom: 16,
-  },
-  modalInput: {
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 16,
-  },
-  modalButton: {
-    width: "100%",
-    height: 40,
-    backgroundColor: "#f97316",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  modalButtonText: {
-    color: "white",
-    fontWeight: "500",
-  },
-  modalCancelText: {
-    fontSize: 14,
-    color: "orange",
-    textAlign: "center",
-    textDecorationLine: "underline",
   },
 });
