@@ -96,6 +96,7 @@ const Gym: React.FC = () => {
                startDate: userPlanData.start_date,
                expiryDate: userPlanData.end_date,
                isActive: userPlanData.status === "active",
+               billingCycle: userPlanData.billing_cycle, // Add billing cycle to user plan
             });
 
             // Calculate days until expiry
@@ -258,20 +259,37 @@ const Gym: React.FC = () => {
                });
 
                if (response.status === 200 && response.data.payment_status === "confirmed") {
-                  
+                  setPaymentSuccess(true);
                   setShowBillModal(true); // Show bill modal
+
+                  // Send payment confirmation email
+                  await apiAuth.post("send-payment-email/", {
+                     selected_plan_name: selectedPlan?.name,
+                     selected_plan_price: selectedPlan?.price[billingCycle],
+                     billing_cycle: billingCycle,
+                     selected_trainer_name: selectedTrainer?.name || null,
+                     selected_trainer_specialization: selectedTrainer?.trainer_profile?.specialization || null,
+                     selected_trainer_experience_years: selectedTrainer?.trainer_profile?.experience_years || null,
+                     start_date: new Date().toLocaleDateString(),
+                     end_date: new Date(new Date().setMonth(new Date().getMonth() +
+                        (billingCycle === "monthly" ? 1 : billingCycle === "quarterly" ? 3 : billingCycle === "yearly" ? 12 : 0))
+                     ).toLocaleDateString(),
+                     purchase_date: new Date().toLocaleDateString(),
+                  });
+
+               } else if (response.status === 200 && response.data.message === "Payment not confirmed yet") {
+                  
+                  setShowPaymentModal(false);
                } else {
-                  setPaymentNotConfirmed(true);
+
                   setShowPaymentModal(false);
                }
             } catch (error) {
-               console.error("Error confirming payment:", error);
-               setPaymentNotConfirmed(true);
                setShowPaymentModal(false);
             } finally {
                setConfirmingPayment(false);
             }
-         }, 60000); // 1 minute delay
+         }, 60000); // 1-minute delay
 
          setPaymentTimeout(timeout);
       }
@@ -297,6 +315,7 @@ const Gym: React.FC = () => {
             startDate: userPlanData.start_date,
             expiryDate: userPlanData.end_date,
             isActive: userPlanData.status === "active",
+            billingCycle: userPlanData.billing_cycle, // Add billing cycle to user plan
          });
 
          // Calculate days until expiry
@@ -337,6 +356,12 @@ const Gym: React.FC = () => {
          // Store trainer_id in AsyncStorage
          await AsyncStorage.setItem("trainer_id", trainerData.trainer_id.toString());
          await AsyncStorage.setItem("trainer_name", trainerData.trainer_name);
+
+         // Fetch all available trainers
+         const allTrainersResponse = await apiAuth.get("trainers/");
+         const allTrainersData = allTrainersResponse.data;
+
+         setAllTrainers(allTrainersData);
       } catch (error) {
          console.error("Error fetching updated data:", error);
       }
@@ -401,6 +426,7 @@ const Gym: React.FC = () => {
             setBillingCycle={setBillingCycle}
             onUpgradeRequest={handleUpgradeRequest}
             currentPlan={userPlan?.currentPlan}
+            userBillingCycle={userPlan?.billingCycle} // Pass the user's billing cycle
          />
 
          <TrainerSelectionModal
@@ -426,14 +452,14 @@ const Gym: React.FC = () => {
                         {selectedTrainer && (
                            <View>
                               <Text>Trainer: {selectedTrainer.name}</Text>
-                              <Text>Specialization: {selectedTrainer.specialization}</Text>
-                              <Text>Experience: {selectedTrainer.experience}</Text>
+                              <Text>Specialization: {selectedTrainer.trainer_profile.specialization}</Text>
+                              <Text>Experience: {selectedTrainer.trainer_profile.experience_years}</Text>
                            </View>
                         )}
                         <Text>Start Date: {new Date().toLocaleDateString()}</Text>
                         <Text>End Date: {new Date(new Date().setMonth(new Date().getMonth() + (billingCycle === 'monthly' ? 1 : billingCycle === 'quarterly' ? 3 : 12))).toLocaleDateString()}</Text>
                         <Text>Purchase Date: {new Date().toLocaleDateString()}</Text>
-                        <TouchableOpacity style={localStyles.confirmButton} onPress={() => setShowPaymentModal(false)}>
+                        <TouchableOpacity style={localStyles.confirmButton} onPress={() => { setShowPaymentModal(false); fetchUpdatedData(); }}>
                            <Text style={localStyles.buttonText}>Close</Text>
                         </TouchableOpacity>
                      </View>
@@ -445,8 +471,8 @@ const Gym: React.FC = () => {
                         {selectedTrainer && (
                            <View>
                               <Text>Trainer: {selectedTrainer.name}</Text>
-                              <Text>Specialization: {selectedTrainer.specialization}</Text>
-                              <Text>Experience: {selectedTrainer.experience}</Text>
+                              <Text>Specialization: {selectedTrainer.trainer_profile.specialization}</Text>
+                              <Text>Experience: {selectedTrainer.trainer_profile.experience_years}</Text>
                            </View>
                         )}
                         <TouchableOpacity style={localStyles.confirmButton} onPress={handlePaymentConfirm}>
@@ -457,32 +483,6 @@ const Gym: React.FC = () => {
                         </TouchableOpacity>
                      </View>
                   )}
-               </View>
-            </View>
-         </Modal>
-
-         <Modal visible={showBillModal} transparent={true} animationType="slide">
-            <View style={localStyles.modalContainer}>
-               <View style={localStyles.modalContent}>
-                  <Text style={localStyles.modalTitle}>Payment Receipt</Text>
-                  <Text>Plan: {selectedPlan?.name}</Text>
-                  <Text>Amount: ₹{selectedPlan?.price[billingCycle]}</Text>
-                  {selectedTrainer && (
-                     <View>
-                        <Text>Trainer: {selectedTrainer.name}</Text>
-                        <Text>Specialization: {selectedTrainer.specialization}</Text>
-                        <Text>Experience: {selectedTrainer.experience}</Text>
-                     </View>
-                  )}
-                  <Text>Start Date: {new Date().toLocaleDateString()}</Text>
-                  <Text>End Date: {new Date(new Date().setMonth(new Date().getMonth() + (billingCycle === 'monthly' ? 1 : billingCycle === 'quarterly' ? 3 : 12))).toLocaleDateString()}</Text>
-                  <Text>Purchase Date: {new Date().toLocaleDateString()}</Text>
-                  <TouchableOpacity style={localStyles.confirmButton} onPress={() => window.print()}>
-                     <Text style={localStyles.buttonText}>Print Bill</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={localStyles.cancelButton} onPress={() => { setShowBillModal(false); fetchUpdatedData(); }}>
-                     <Text style={localStyles.buttonText}>Close</Text>
-                  </TouchableOpacity>
                </View>
             </View>
          </Modal>

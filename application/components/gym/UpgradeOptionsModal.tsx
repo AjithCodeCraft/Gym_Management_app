@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal } from 'react-native';
 
 interface Plan {
-  id:number;
+  id: number;
   name: string;
   price: {
     monthly: number;
@@ -21,6 +21,7 @@ interface UpgradeOptionsModalProps {
   setBillingCycle: (cycle: 'monthly' | 'quarterly' | 'yearly') => void;
   onUpgradeRequest: (plan: Plan) => void;
   currentPlan: string;
+  userBillingCycle: 'monthly' | 'quarterly' | 'yearly'; // Add this prop
 }
 
 const UpgradeOptionsModal: React.FC<UpgradeOptionsModalProps> = ({
@@ -31,6 +32,7 @@ const UpgradeOptionsModal: React.FC<UpgradeOptionsModalProps> = ({
   setBillingCycle,
   onUpgradeRequest,
   currentPlan,
+  userBillingCycle, // Use this prop
 }) => {
   return (
     <Modal
@@ -63,7 +65,11 @@ const UpgradeOptionsModal: React.FC<UpgradeOptionsModalProps> = ({
             {plans.map((plan, index) => (
               <View
                 key={index}
-                style={[styles.planOption, plan.highlighted ? styles.highlightedPlan : null, plan.name === currentPlan ? styles.currentPlanOption : null]}
+                style={[
+                  styles.planOption,
+                  plan.highlighted ? styles.highlightedPlan : null,
+                  plan.name === currentPlan && billingCycle === userBillingCycle ? styles.currentPlanOption : null, // Highlight current plan
+                ]}
               >
                 {plan.highlighted && (
                   <View style={styles.recommendedBadge}>
@@ -86,7 +92,7 @@ const UpgradeOptionsModal: React.FC<UpgradeOptionsModalProps> = ({
                   ))}
                 </View>
 
-                {plan.name !== currentPlan ? (
+                {plan.name !== currentPlan || billingCycle !== userBillingCycle ? (
                   <TouchableOpacity
                     style={styles.buyNowButton}
                     onPress={() => onUpgradeRequest(plan)}

@@ -46,6 +46,7 @@ from django.conf import settings
 import razorpay
 from django.core.mail import send_mail
 from django.contrib.auth.models import AnonymousUser
+from django.core.mail import EmailMultiAlternatives
 import uuid
 
 
@@ -111,7 +112,7 @@ def send_otp(request):
         send_mail(
             subject="Your OTP for Registration",
             message=f"Your OTP is: {otp}. It is valid for 5 minutes.",
-            from_email="alameena068@gmail.com",
+            from_email="FortiFit <alameena068@gmail.com>",
             recipient_list=[email],
         )
 
@@ -369,7 +370,7 @@ def register_user(request):
             subject="Welcome to Gym Management System",
             message="",
             html_message=email_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email="FortiFit <alameena068@gmail.com>",
             recipient_list=[email],
             fail_silently=False,
         )
@@ -412,7 +413,7 @@ def send_password_reset_email(request):
             send_mail(
                 subject="Reset Your Password",
                 message=f"Click the link below to reset your password:\n{link}",
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email="FortiFit <alameena068@gmail.com>",
                 recipient_list=[email],
                 fail_silently=False,
             )
@@ -2198,6 +2199,63 @@ class PaymentConfirmationView(APIView):
         except Exception as e:
             print(f"Unexpected error: {str(e)}")
             return JsonResponse({"error": f"Unexpected error: {str(e)}"}, status=500)
+        
+
+
+class SendPaymentEmailView(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure only authenticated users can access
+
+    def post(self, request):
+        user_email = request.user.email  # Get user email from the authenticated user
+
+        # Get payment details from the request body
+        data = request.data
+        selected_plan_name = data.get("selected_plan_name", "N/A")
+        selected_plan_price = data.get("selected_plan_price", "N/A")
+        billing_cycle = data.get("billing_cycle", "N/A")
+        selected_trainer_name = data.get("selected_trainer_name", "N/A")
+        selected_trainer_specialization = data.get("selected_trainer_specialization", "N/A")
+        selected_trainer_experience_years = data.get("selected_trainer_experience_years", "N/A")
+        start_date = data.get("start_date", "N/A")
+        end_date = data.get("end_date", "N/A")
+        purchase_date = data.get("purchase_date", "N/A")
+
+        # Create the email content with HTML table
+        subject = "Payment Successful - Plan Confirmation"
+        body = f"""
+        <html>
+        <body>
+            <h2>Payment Successful</h2>
+            <table border="1" style="border-collapse: collapse; width: 100%;">
+                <tr>
+                    <th style="padding: 8px; text-align: left;">Details</th>
+                    <th style="padding: 8px; text-align: left;">Information</th>
+                </tr>
+                <tr><td>Plan</td><td>{selected_plan_name}</td></tr>
+                <tr><td>Amount</td><td>₹{selected_plan_price}</td></tr>
+                <tr><td>Billing Cycle</td><td>{billing_cycle}</td></tr>
+                <tr><td>Trainer</td><td>{selected_trainer_name}</td></tr>
+                <tr><td>Specialization</td><td>{selected_trainer_specialization}</td></tr>
+                <tr><td>Experience</td><td>{selected_trainer_experience_years} years</td></tr>
+                <tr><td>Start Date</td><td>{start_date}</td></tr>
+                <tr><td>End Date</td><td>{end_date}</td></tr>
+                <tr><td>Purchase Date</td><td>{purchase_date}</td></tr>
+            </table>
+            <p>Thank you for choosing us!</p>
+        </body>
+        </html>
+        """
+
+        # Send email
+        try:
+            email = EmailMultiAlternatives(subject, "", "FortiFit <alameena068@gmail.com>", [user_email])
+            email.attach_alternative(body, "text/html")
+            email.send()
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response({"message": "Payment confirmation email sent successfully"}, status=status.HTTP_200_OK)
+
 
 
 
