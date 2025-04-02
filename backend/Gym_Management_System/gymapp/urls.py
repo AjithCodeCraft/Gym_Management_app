@@ -5,6 +5,7 @@ from .views import (
     GetAssignedTrainerView,
     GetUserBySenderIDView,
     PaymentConfirmationView,
+    SendPaymentEmailView,
     TrainerAttendanceCheckInView,
     TrainerAttendanceCheckOutView,
     TrainerAttendanceListView,
@@ -209,6 +210,11 @@ urlpatterns = [
         "payment/confirm/", 
         PaymentConfirmationView.as_view(), 
         name="confirm-payment"),
+    path(
+        "send-payment-email/",
+        SendPaymentEmailView.as_view(), 
+        name="send-payment-email"),
+
  
 ]
  

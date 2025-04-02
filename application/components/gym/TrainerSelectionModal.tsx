@@ -58,10 +58,12 @@ const TrainerSelectionModal: React.FC<TrainerSelectionModalProps> = ({
                 </View>
                 <View style={styles.trainerInfo}>
                   <Text style={styles.trainerName}>{trainer.name}</Text>
-                  <Text style={styles.trainerSpecialization}>{trainer.specialization}</Text>
+                  <Text style={styles.trainerSpecialization}>{trainer.trainer_profile.specialization}</Text>
                   <View style={styles.trainerDetails}>
-                    <Text style={styles.trainerExperience}>{trainer.experience} experience</Text>
-                    <Text style={styles.trainerAvailability}>Available: {trainer.availability}</Text>
+                    <Text style={styles.trainerExperience}>Exp: {trainer.trainer_profile.experience_years} years </Text>
+                    <Text style={styles.trainerAvailability}>Availability: {trainer.trainer_profile.availability.toLowerCase() === "both"
+                        ? "Morning and Evening"
+                        : trainer.trainer_profile.availability}</Text>
                   </View>
                   <Text style={styles.selectTrainerText}>Tap to select</Text>
                 </View>
