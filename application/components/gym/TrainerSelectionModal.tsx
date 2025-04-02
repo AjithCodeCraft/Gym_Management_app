@@ -3,11 +3,23 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal } from 'rea
 
 interface Trainer {
   id: number;
-  name: string;
-  specialization: string;
-  experience: string;
-  availability: string;
-}
+   name: string;
+   specialization: string;
+   experience: string;
+   availability: string;
+   email: string;
+   gender: string;
+   phone_number: string;
+   profile_picture_url: string | null;
+   trainer_profile: {
+      availability: string;
+      experience_years: string;
+      qualifications: string;
+      salary: string;
+      specialization: string;
+   };
+   user_id: string;
+};
 
 interface TrainerSelectionModalProps {
   visible: boolean;

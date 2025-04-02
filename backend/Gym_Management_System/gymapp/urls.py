@@ -4,6 +4,7 @@ from .views import (
     DailyWorkoutView,
     GetAssignedTrainerView,
     GetUserBySenderIDView,
+    PaymentConfirmationView,
     TrainerAttendanceCheckInView,
     TrainerAttendanceCheckOutView,
     TrainerAttendanceListView,
@@ -12,6 +13,7 @@ from .views import (
     TrainerSendRecievedMessageListView,
     UpdateTrainerDetails,
     UserSendReceivedMessageListView,
+    GeneratePaymentLinkView,
     add_subscription,
     delete_all,
     delete_subscription,
@@ -199,8 +201,14 @@ urlpatterns = [
         "chat/trainer/<int:trainer_id>/", 
         UserSendReceivedMessageListView.as_view(), 
         name="user-messages"),
+    path(
+        "payment/generate/", 
+        GeneratePaymentLinkView.as_view(), 
+        name="generate-payment"),
+    path(
+        "payment/confirm/", 
+        PaymentConfirmationView.as_view(), 
+        name="confirm-payment"),
  
-
-
 ]
  
