@@ -1,6 +1,7 @@
 import random
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
+from datetime import timedelta
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 
@@ -41,8 +42,11 @@ from django.core.cache import cache
 from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from django.conf import settings
+import razorpay
 from django.core.mail import send_mail
 from django.contrib.auth.models import AnonymousUser
+import uuid
+
 
 from .serializers import (
     LightweightUserSerializer,
@@ -64,6 +68,8 @@ import os
 from django.http import JsonResponse
 from gradio_client import Client
 import re
+import hmac
+import hashlib
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import MultipleObjectsReturned
 
@@ -2025,4 +2031,160 @@ class UserSendReceivedMessageListView(generics.ListAPIView):
         ).order_by("timestamp")
 
 
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+
+class GeneratePaymentLinkView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            user = request.user  
+            plan_id = request.data.get("plan_id")  
+            trainer_id = request.data.get("trainer_id")  
+            amount = request.data.get("amount")
+            payment_method = request.data.get("payment_method")
+
+            if not plan_id or not amount or not payment_method:
+                return JsonResponse({"success": False, "message": "Missing required fields"}, status=400)
+
+            # Get the Subscription plan
+            plan = get_object_or_404(Subscription, id=plan_id)
+
+            # Get the Trainer (if provided)
+            trainer = get_object_or_404(User, id=trainer_id, user_type="trainer") if trainer_id else None
+
+            amount_paise = int(float(amount) * 100)  # Convert to paise
+            transaction_id = str(uuid.uuid4())
+
+            # Create Razorpay Order
+            order_data = {
+                "amount": amount_paise,
+                "currency": "INR",
+                "receipt": transaction_id,
+                "payment_capture": 1  
+            }
+            razorpay_order = razorpay_client.order.create(order_data)
+
+            # Generate Razorpay Payment Link
+            payment_data = {
+                "amount": amount_paise,
+                "currency": "INR",
+                "description": "Gym Membership Payment",
+                "notify": {"sms": True, "email": True},
+                "reminder_enable": True,
+                "reference_id": razorpay_order["id"],
+            }
+            payment_link = razorpay_client.payment_link.create(payment_data)
+            plink_id = payment_link["id"]  
+
+           
+            payment = Payment.objects.create(
+                user=user,
+                trainer=trainer,  # Store the trainer
+                subscription=plan,  # Store the selected plan
+                amount=amount,
+                payment_method=payment_method,
+                status="pending",
+                razorpay_order_id=razorpay_order["id"],
+                razorpay_payment_link_id=plink_id, 
+                payment_date=timezone.now(),
+            )
+
+            return JsonResponse({
+                "success": True,
+                "message": "Payment link generated successfully",
+                "payment_url": payment_link["short_url"],
+                "razorpay_order_id": razorpay_order["id"],
+                "razorpay_payment_link_id": plink_id,
+                "transaction_id": transaction_id,
+                "amount": amount,
+                "currency": "INR"
+            })
+
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
  
+
+class PaymentConfirmationView(APIView):
+    def post(self, request):
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            payment_link_id = data.get("payment_link_id")
+
+            if not payment_link_id:
+                return JsonResponse({"error": "Missing payment_link_id"}, status=400)
+
+          
+            try:
+                payment_link_details = razorpay_client.payment_link.fetch(payment_link_id)
+            except razorpay.errors.BadRequestError as e:
+                return JsonResponse({"error": f"Razorpay Bad Request: {str(e)}"}, status=400)
+            except razorpay.errors.ServerError as e:
+                return JsonResponse({"error": f"Razorpay Server Error: {str(e)}"}, status=500)
+
+            if not payment_link_details:
+                return JsonResponse({"error": "Invalid payment link ID"}, status=404)
+
+            
+            payment_status = payment_link_details.get("status")
+            payments = payment_link_details.get("payments", [])
+
+            if payment_status == "paid" and payments:
+                razorpay_payment_id = payments[0].get("id")
+
+                
+                payment = Payment.objects.filter(razorpay_payment_link_id=payment_link_id).first()
+                if not payment:
+                    return JsonResponse({"error": "Payment record not found in database"}, status=404)
+
+                
+                payment.status = "completed"
+                payment.razorpay_payment_id = razorpay_payment_id
+                payment.payment_date = timezone.now()
+                payment.save()
+
+              
+                if not hasattr(payment, "subscription") or not payment.subscription:
+                    return JsonResponse({"error": "Subscription not found for this payment"}, status=400)
+
+                subscription = get_object_or_404(Subscription, id=payment.subscription.id)
+
+                
+                start_date = timezone.now().date()
+                end_date = start_date + timedelta(days=subscription.duration * 30)
+
+                
+                user_subscription, created = UserSubscription.objects.update_or_create(
+                    user=payment.user,
+                    defaults={
+                        "subscription": subscription,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "status": "active",
+                    },
+                )
+
+                
+                if subscription.name in ["Pro Plan", "Elite Plan"] and payment.trainer:
+                    TrainerAssignment.objects.update_or_create(
+                        user=payment.user, defaults={"trainer": payment.trainer}
+                    )
+
+                return JsonResponse({
+                    "message": "Payment confirmed, subscription updated, and trainer assigned!",
+                    "payment_status": "confirmed",
+                    "razorpay_payment_id": razorpay_payment_id
+                }, status=200)
+
+            return JsonResponse({"message": "Payment not completed yet", "payment_status": payment_status}, status=200)
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format"}, status=400)
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return JsonResponse({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+
+

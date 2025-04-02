@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal } from 'react-native';
 
 interface Plan {
+  id:number;
   name: string;
   price: {
     monthly: number;

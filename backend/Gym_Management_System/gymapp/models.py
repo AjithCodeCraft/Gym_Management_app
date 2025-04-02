@@ -210,6 +210,12 @@ class Payment(models.Model):
     user = models.ForeignKey(
         "User", on_delete=models.CASCADE, related_name="user_payments"
     )
+    trainer = models.ForeignKey(  
+        "User", on_delete=models.SET_NULL, null=True, blank=True, related_name="trainer_payments"
+    )
+    subscription = models.ForeignKey(
+        Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name="payments"
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateTimeField()
     payment_method = models.CharField(
@@ -229,7 +235,12 @@ class Payment(models.Model):
             ("failed", "Failed"),
         ],
         default="pending",
-    )
+    ) 
+    razorpay_order_id = models.CharField(max_length=100, null=True, blank=True)
+    razorpay_payment_id = models.CharField(max_length=100, null=True, blank=True)
+    razorpay_signature = models.CharField(max_length=256, null=True, blank=True)
+    razorpay_payment_link_id = models.CharField(max_length=255, null=True, blank=True) 
+    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -286,6 +297,7 @@ class SleepLog(models.Model):
 
     def __str__(self):
         return f"Sleep Log for {self.user.name} on {self.sleep_date}"
+
 
 class Challenge(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -405,5 +417,6 @@ class DefaultWorkout(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["user"], name="unique_user_default_workout")
         ]
+
 
 
