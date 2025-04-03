@@ -11,6 +11,7 @@ interface Plan {
   };
   features: string[];
   highlighted?: boolean;
+  duration: number;
 }
 
 interface UpgradeOptionsModalProps {
@@ -21,7 +22,9 @@ interface UpgradeOptionsModalProps {
   setBillingCycle: (cycle: 'monthly' | 'quarterly' | 'yearly') => void;
   onUpgradeRequest: (plan: Plan) => void;
   currentPlan: string;
-  userBillingCycle: 'monthly' | 'quarterly' | 'yearly'; // Add this prop
+  userBillingCycle: 'monthly' | 'quarterly' | 'yearly';
+  lockedPlanPrice: number | null;
+  lockedPlanDuration: number | null;
 }
 
 const UpgradeOptionsModal: React.FC<UpgradeOptionsModalProps> = ({
@@ -32,8 +35,48 @@ const UpgradeOptionsModal: React.FC<UpgradeOptionsModalProps> = ({
   setBillingCycle,
   onUpgradeRequest,
   currentPlan,
-  userBillingCycle, // Use this prop
+  userBillingCycle,
+  lockedPlanPrice,
+  lockedPlanDuration,
 }) => {
+  const isCurrentPlan = (plan: Plan) => {
+    return (
+      plan.name === currentPlan &&
+      plan.price[userBillingCycle] === lockedPlanPrice &&
+      plan.duration === lockedPlanDuration
+    );
+  };
+
+  // Modified sorting function specifically for quarterly cycle
+  const getSortedPlans = () => {
+    // For non-quarterly cycles, use normal price sorting
+    if (billingCycle !== 'quarterly') {
+      return [...plans].sort((a, b) => a.price[billingCycle] - b.price[billingCycle]);
+    }
+    
+    // For quarterly cycle, manually order as Basic → Pro → Elite
+    return [...plans].sort((a, b) => {
+      // Define our desired order
+      const order = ['Basic Plan', 'Pro Plan', 'Elite Plan'];
+      
+      // Get the indices of each plan in our desired order
+      const aIndex = order.indexOf(a.name);
+      const bIndex = order.indexOf(b.name);
+      
+      // If both plans are in our desired order, sort them accordingly
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      
+      // For any other plans not in our order, sort by price
+      return a.price.quarterly - b.price.quarterly;
+    });
+  };
+
+  const sortedPlans = getSortedPlans();
+
+  
+
   return (
     <Modal
       animationType="slide"
@@ -62,50 +105,54 @@ const UpgradeOptionsModal: React.FC<UpgradeOptionsModalProps> = ({
 
           {/* Plan Options */}
           <ScrollView style={styles.plansScrollView} contentContainerStyle={styles.plansScrollViewContent}>
-            {plans.map((plan, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.planOption,
-                  plan.highlighted ? styles.highlightedPlan : null,
-                  plan.name === currentPlan && billingCycle === userBillingCycle ? styles.currentPlanOption : null, // Highlight current plan
-                ]}
-              >
-                {plan.highlighted && (
-                  <View style={styles.recommendedBadge}>
-                    <Text style={styles.recommendedText}>RECOMMENDED</Text>
-                  </View>
-                )}
+            {sortedPlans.map((plan, index) => {
+              const isLocked = isCurrentPlan(plan);
 
-                <Text style={styles.planOptionName}>{plan.name}</Text>
-                <Text style={styles.planOptionPrice}>
-                  ₹{plan.price[billingCycle]}
-                  <Text style={styles.planPricePeriod}>/{billingCycle}</Text>
-                </Text>
-
-                <View style={styles.planFeaturesList}>
-                  {plan.features.map((feature, idx) => (
-                    <View key={idx} style={styles.planFeatureItem}>
-                      <Text style={styles.planFeatureBullet}>✓</Text>
-                      <Text style={styles.planFeatureText}>{feature}</Text>
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.planOption,
+                    plan.highlighted ? styles.highlightedPlan : null,
+                    isLocked ? styles.currentPlanOption : null,
+                  ]}
+                >
+                  {plan.highlighted && (
+                    <View style={styles.recommendedBadge}>
+                      <Text style={styles.recommendedText}>RECOMMENDED</Text>
                     </View>
-                  ))}
-                </View>
+                  )}
 
-                {plan.name !== currentPlan || billingCycle !== userBillingCycle ? (
-                  <TouchableOpacity
-                    style={styles.buyNowButton}
-                    onPress={() => onUpgradeRequest(plan)}
-                  >
-                    <Text style={styles.buyNowButtonText}>Buy Now</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.currentPlanLabel}>
-                    <Text style={styles.currentPlanLabelText}>Current Plan</Text>
+                  <Text style={styles.planOptionName}>{plan.name}</Text>
+                  <Text style={styles.planOptionPrice}>
+                    ₹{plan.price[billingCycle]}
+                    <Text style={styles.planPricePeriod}>/{billingCycle}</Text>
+                  </Text>
+
+                  <View style={styles.planFeaturesList}>
+                    {plan.features.map((feature: string, idx: number) => (
+                      <View key={idx} style={styles.planFeatureItem}>
+                        <Text style={styles.planFeatureBullet}>✓</Text>
+                        <Text style={styles.planFeatureText}>{feature}</Text>
+                      </View>
+                    ))}
                   </View>
-                )}
-              </View>
-            ))}
+
+                  {!isLocked ? (
+                    <TouchableOpacity
+                      style={styles.buyNowButton}
+                      onPress={() => onUpgradeRequest(plan)}
+                    >
+                      <Text style={styles.buyNowButtonText}>Buy Now</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.currentPlanLabel}>
+                      <Text style={styles.currentPlanLabelText}>Current Plan</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </ScrollView>
 
           <TouchableOpacity
@@ -190,6 +237,8 @@ const styles = StyleSheet.create({
   },
   currentPlanOption: {
     opacity: 0.7,
+    borderColor: '#4CAF50',
+    borderWidth: 2,
   },
   recommendedBadge: {
     position: 'absolute',
@@ -252,13 +301,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   currentPlanLabel: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#4CAF50',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   currentPlanLabelText: {
-    color: '#666666',
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },

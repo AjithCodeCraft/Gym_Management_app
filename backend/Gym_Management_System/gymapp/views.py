@@ -47,6 +47,9 @@ import razorpay
 from django.core.mail import send_mail
 from django.contrib.auth.models import AnonymousUser
 from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
+from time import sleep
+from requests.exceptions import RequestException
 import uuid
 
 
@@ -76,6 +79,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import MultipleObjectsReturned
 from firebase_admin import auth
 from firebase_admin.exceptions import FirebaseError
+import logging
+logger = logging.getLogger(__name__)
+
 # Create your views here.
 
 
@@ -2047,77 +2053,85 @@ class UserSendReceivedMessageListView(generics.ListAPIView):
 
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
+
 class GeneratePaymentLinkView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        MAX_RETRIES = 3
+        RETRY_DELAY = 1  # seconds
+        
         try:
-            user = request.user  
-            plan_id = request.data.get("plan_id")  
-            trainer_id = request.data.get("trainer_id")  
-            amount = request.data.get("amount")
-            payment_method = request.data.get("payment_method")
-
-            if not plan_id or not amount or not payment_method:
+            user = request.user
+            data = request.data
+            
+            # Validate required fields
+            required_fields = ['plan_id', 'amount', 'payment_method']
+            if not all(field in data for field in required_fields):
                 return JsonResponse({"success": False, "message": "Missing required fields"}, status=400)
 
-            # Get the Subscription plan
-            plan = get_object_or_404(Subscription, id=plan_id)
+            plan = get_object_or_404(Subscription, id=data['plan_id'])
+            trainer = get_object_or_404(User, id=data['trainer_id'], user_type="trainer") if data.get('trainer_id') else None
 
-            # Get the Trainer (if provided)
-            trainer = get_object_or_404(User, id=trainer_id, user_type="trainer") if trainer_id else None
-
-            amount_paise = int(float(amount) * 100)  # Convert to paise
+            amount_paise = int(float(data['amount']) * 100)
             transaction_id = str(uuid.uuid4())
 
-            # Create Razorpay Order
-            order_data = {
-                "amount": amount_paise,
-                "currency": "INR",
-                "receipt": transaction_id,
-                "payment_capture": 1  
-            }
-            razorpay_order = razorpay_client.order.create(order_data)
+            # Retry logic for Razorpay API calls
+            for attempt in range(MAX_RETRIES):
+                try:
+                    with transaction.atomic():
+                        # Create Razorpay Order
+                        order_data = {
+                            "amount": amount_paise,
+                            "currency": "INR",
+                            "receipt": transaction_id,
+                            "payment_capture": 1
+                        }
+                        razorpay_order = razorpay_client.order.create(order_data)
 
-            # Generate Razorpay Payment Link
-            payment_data = {
-                "amount": amount_paise,
-                "currency": "INR",
-                "description": "Gym Membership Payment",
-                "notify": {"sms": True, "email": True},
-                "reminder_enable": True,
-                "reference_id": razorpay_order["id"],
-            }
-            payment_link = razorpay_client.payment_link.create(payment_data)
-            plink_id = payment_link["id"]  
+                        # Generate Payment Link
+                        payment_data = {
+                            "amount": amount_paise,
+                            "currency": "INR",
+                            "description": "Gym Membership Payment",
+                            "notify": {"sms": True, "email": True},
+                            "reminder_enable": True,
+                            "reference_id": razorpay_order["id"],
+                        }
+                        payment_link = razorpay_client.payment_link.create(payment_data)
 
-           
-            payment = Payment.objects.create(
-                user=user,
-                trainer=trainer,  # Store the trainer
-                subscription=plan,  # Store the selected plan
-                amount=amount,
-                payment_method=payment_method,
-                status="pending",
-                razorpay_order_id=razorpay_order["id"],
-                razorpay_payment_link_id=plink_id, 
-                payment_date=timezone.now(),
-            )
+                        # Create payment record
+                        payment = Payment.objects.create(
+                            user=user,
+                            trainer=trainer,
+                            subscription=plan,
+                            amount=data['amount'],
+                            payment_method=data['payment_method'],
+                            status="pending",
+                            razorpay_order_id=razorpay_order["id"],
+                            razorpay_payment_link_id=payment_link["id"],
+                            payment_date=timezone.now(),
+                        )
 
-            return JsonResponse({
-                "success": True,
-                "message": "Payment link generated successfully",
-                "payment_url": payment_link["short_url"],
-                "razorpay_order_id": razorpay_order["id"],
-                "razorpay_payment_link_id": plink_id,
-                "transaction_id": transaction_id,
-                "amount": amount,
-                "currency": "INR"
-            })
+                        return JsonResponse({
+                            "success": True,
+                            "payment_url": payment_link["short_url"],
+                            "razorpay_payment_link_id": payment_link["id"],
+                            "transaction_id": transaction_id
+                        })
+
+                except RequestException as e:
+                    if attempt == MAX_RETRIES - 1:
+                        raise
+                    sleep(RETRY_DELAY * (attempt + 1))
+                    continue
 
         except Exception as e:
-            return JsonResponse({"success": False, "message": str(e)}, status=500)
-
+            logger.error(f"Payment link generation failed: {str(e)}", exc_info=True)
+            return JsonResponse({
+                "success": False,
+                "message": "Payment processing failed. Please try again."
+            }, status=500)
 
  
 

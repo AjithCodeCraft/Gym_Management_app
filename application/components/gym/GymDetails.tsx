@@ -28,9 +28,9 @@ const GymDetails: React.FC<GymDetailsProps> = ({ gymName, address, contactNumber
                <Text style={styles.trainerExperience}>
                   Experience: {trainer.trainer_profile.experience_years} years
                </Text>
-               <Text style={styles.trainerAvailability}>
-                  Availability: {capitalize(trainer.trainer_profile.availability)}
-               </Text>
+               <Text style={styles.trainerAvailability}>Availability: {trainer.trainer_profile.availability.toLowerCase() === "both"
+                                       ? "Morning and Evening"
+                                       : trainer.trainer_profile.availability}</Text>
             </View>
          ))}
       </View>
