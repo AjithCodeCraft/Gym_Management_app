@@ -62,31 +62,6 @@ npm run dev
 # Trainer Portal
 # Trainers can log in and manage their schedules, interactions, and salary details.
 
-## Project Structure
-
-gym-management-system/
-│
-├── backend/
-│   ├── api/
-│   ├── management/
-│   ├── migrations/
-│   ├── models/
-│   ├── views/
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-│
-├── frontend/
-│   ├── components/
-│   ├── pages/
-│   ├── public/
-│   ├── styles/
-│   ├── next.config.js
-│   └── package.json
-|__ application
-| 
-├── README.md
-└── requirements.txt
 
 ## Technologies Used
 
