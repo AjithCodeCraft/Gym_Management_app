@@ -3,6 +3,7 @@ import { Dumbbell, BarChart, User, Users, Calendar, Settings, LogOut, Menu } fro
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Image from 'next/image'; // Import the Image component from Next.js
+import Cookies from "js-cookie";
 
 const AdminSidebar = () => {
   const router = useRouter();
@@ -11,6 +12,17 @@ const AdminSidebar = () => {
   const isActive = (path) => {
     return router.pathname === path;
   };
+
+
+
+  const handleLogout = () => {
+    // Remove access token from cookies
+    Cookies.remove("access_token");
+
+    // Redirect to login page
+    router.push("/login");
+  };
+
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -32,18 +44,17 @@ const AdminSidebar = () => {
               height={40} // Adjust the height as needed
               className="object-contain" // Ensures the image scales correctly
             />
-             <h1 className="ml-2 text-xl font-bold">FortiFit Gym</h1>
+            <h1 className="ml-2 text-xl font-bold">FortiFit Gym</h1>
           </div>
 
           <div className="flex-grow flex flex-col px-2 mt-2 md:mt-4">
             <div className="space-y-1">
               <Link href="/admin/dashboard" className="w-full">
                 <button
-                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/admin/dashboard')
+                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${isActive('/admin/dashboard')
                       ? 'bg-orange-500 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   <BarChart className="mr-3 h-5 w-5" />
                   Dashboard
@@ -53,34 +64,32 @@ const AdminSidebar = () => {
               {/* Adding a gap between Dashboard and Members */}
               <div className="my-4 border-t border-gray-200 w-full"></div>
 
-       <Link href="/admin/dashboard/members" className="w-full">
-              <button
-                className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                  isActive('/admin/dashboard/members')
-                    ? 'bg-orange-500 text-white'// Change background to gray and text to orange
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <User className="mr-3 h-5 w-5" />
-                Members
-              </button>
-            </Link>
+              <Link href="/admin/dashboard/members" className="w-full">
+                <button
+                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${isActive('/admin/dashboard/members')
+                      ? 'bg-orange-500 text-white'// Change background to gray and text to orange
+                      : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  <User className="mr-3 h-5 w-5" />
+                  Members
+                </button>
+              </Link>
 
 
               <Link href="/admin/dashboard/addplan" className="w-full">
                 <button
-                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/admin/dashboard/addplan')
+                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${isActive('/admin/dashboard/addplan')
                       ? 'bg-orange-500 text-white'
                       : 'text-gray-600 hover:bg-gray-100'
-                  }`}
+                    }`}
                 >
                   <Calendar className="mr-3 h-5 w-5" />
                   Add Plan
                 </button>
               </Link>
 
-              <Link href="/admin/settings" className="w-full">
+              {/* <Link href="/admin/settings" className="w-full">
                 <button
                   className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
                     isActive('/admin/settings')
@@ -91,7 +100,7 @@ const AdminSidebar = () => {
                   <Settings className="mr-3 h-5 w-5" />
                   Settings
                 </button>
-              </Link>
+              </Link> */}
             </div>
           </div>
 
@@ -101,8 +110,11 @@ const AdminSidebar = () => {
                 AD
               </div>
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700">Admin User</p>
-                <button className="flex items-center text-xs text-red-500 mt-1">
+                <p className="text-sm font-medium text-gray-700">Admin</p>
+                <button
+                  className="flex items-center text-xs text-red-500 mt-1"
+                  onClick={handleLogout}
+                >
                   <LogOut className="h-3 w-3 mr-1" />
                   Sign out
                 </button>

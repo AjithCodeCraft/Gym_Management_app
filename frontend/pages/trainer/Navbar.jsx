@@ -40,9 +40,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
             </div>
             
             <div className="flex items-center">
-              <button className="p-1 text-gray-400 rounded-full hover:bg-gray-100 focus:outline-none mr-4">
-                <Bell className="h-6 w-6" />
-              </button>
+             
               <Link href="/trainer/messages" className="inline-block">
                 <button
                   className="p-1 text-gray-400 rounded-full hover:bg-gray-100 focus:outline-none mr-4 flex items-center gap-1"
@@ -52,8 +50,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
                 </button>
               </Link>
               
-              {/* Replace the avatar div with our new component */}
-              <AvatarIcon user={currentUser} />
+              
             </div>
           </div>
         </div>

@@ -33,13 +33,13 @@ const GymTrainerDashboard = () => {
   // Get attendance for the selected date
   const filteredMembers = attendanceData[selectedDate] || [];
 
-  const schedule = [
-    { id: 1, time: '06:00 - 07:00', client: 'Group Class: Morning HIIT', type: 'Group', status: 'completed' },
-    { id: 2, time: '08:00 - 09:00', client: 'John Doe', type: 'Personal', status: 'completed' },
-    { id: 3, time: '10:00 - 11:00', client: 'Sara Williams', type: 'Personal', status: 'in-progress' },
-    { id: 4, time: '13:00 - 14:00', client: 'Group Class: Core Strength', type: 'Group', status: 'upcoming' },
-    { id: 5, time: '15:00 - 16:00', client: 'Mike Johnson', type: 'Personal', status: 'upcoming' }
-  ];
+  // const schedule = [
+  //   { id: 1, time: '06:00 - 07:00', client: 'Group Class: Morning HIIT', type: 'Group', status: 'completed' },
+  //   { id: 2, time: '08:00 - 09:00', client: 'John Doe', type: 'Personal', status: 'completed' },
+  //   { id: 3, time: '10:00 - 11:00', client: 'Sara Williams', type: 'Personal', status: 'in-progress' },
+  //   { id: 4, time: '13:00 - 14:00', client: 'Group Class: Core Strength', type: 'Group', status: 'upcoming' },
+  //   { id: 5, time: '15:00 - 16:00', client: 'Mike Johnson', type: 'Personal', status: 'upcoming' }
+  // ];
 
   const [stats, setStats] = useState({
     totalClients: 0,
@@ -643,8 +643,7 @@ const GymTrainerDashboard = () => {
               <Tabs defaultValue="attendance" className="w-full">
                 <TabsList className="grid grid-cols-3 w-full md:w-auto">
                   <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                  <TabsTrigger value="schedule">Schedule</TabsTrigger>
-                  <TabsTrigger value="salary">Salary</TabsTrigger>
+                  
                 </TabsList>
 
                 {/* Attendance Tab */}
@@ -658,7 +657,7 @@ const GymTrainerDashboard = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Time</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-out Time</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -696,29 +695,7 @@ const GymTrainerDashboard = () => {
                                   {attendanceForDate ? formatTime(attendanceForDate.check_out_time) : 'N/A'}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button
-                                  onClick={() => markAttendance(user.id, 'checked-in')}
-                                  className="text-green-600 hover:text-green-900"
-                                  disabled={trainerCheckInStatus !== 'checked-in'}
-                                >
-                                  <CheckCircle className="h-5 w-5" />
-                                </button>
-                                <button
-                                  onClick={() => markAttendance(user.id, 'checked-out')}
-                                  className="text-yellow-600 hover:text-yellow-900 ml-2"
-                                  disabled={trainerCheckInStatus !== 'checked-in'}
-                                >
-                                  <XCircle className="h-5 w-5" />
-                                </button>
-                                <button
-                                  onClick={() => markAttendance(user.id, 'absent')}
-                                  className="text-red-600 hover:text-red-900 ml-2"
-                                  disabled={trainerCheckInStatus !== 'checked-in'}
-                                >
-                                  <Activity className="h-5 w-5" />
-                                </button>
-                              </td>
+                              
                             </tr>
                           );
                         })}
@@ -727,80 +704,7 @@ const GymTrainerDashboard = () => {
                   </div>
                 </TabsContent>
 
-                {/* Schedule Tab */}
-                <TabsContent value="schedule">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
-                    <div className="md:col-span-2">
-                      <div className="bg-white p-4 rounded-lg shadow-sm">
-                        <h3 className="text-lg font-semibold mb-4">Today's Schedule ({new Date().toLocaleDateString('en-GB')})</h3>
-                        <div className="space-y-4">
-                          {schedule.map(session => (
-                            <div key={session.id} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-100">
-                              <div className="flex items-center">
-                                <div className="mr-4 text-gray-500">
-
-                                </div>
-                                <div>
-                                  <p className="font-medium">{session.client}</p>
-                                  <p className="text-sm text-gray-500">{session.time}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className={`px-2 py-1 text-xs rounded-md ${getSessionTypeColor(session.type)}`}>
-                                  {session.type}
-                                </span>
-                                <span className={`px-2 py-1 text-xs rounded-md ${getScheduleStatusColor(session.status)}`}>
-                                  {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                                </span>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  <MoreHorizontal className="h-5 w-5" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                {/* Salary Tab */}
-                <TabsContent value="salary">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
-                    <div className="md:col-span-2">
-                      <div className="bg-white p-6 rounded-lg shadow-sm">
-                        <h3 className="text-lg font-semibold mb-4">Earnings Breakdown</h3>
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-500 mb-1">Base Salary</p>
-                            <p className="text-2xl font-bold">₹{salaryInfo.base}</p>
-                          </div>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-500 mb-1">Commissions</p>
-                            <p className="text-2xl font-bold">₹{salaryInfo.commissions}</p>
-                          </div>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-500 mb-1">Bonuses</p>
-                            <p className="text-2xl font-bold">₹{salaryInfo.bonuses}</p>
-                          </div>
-                          <div className="bg-green-50 p-4 rounded-lg">
-                            <p className="text-sm text-green-700 mb-1">Total Earnings</p>
-                            <p className="text-2xl font-bold text-green-700">₹{salaryInfo.total}</p>
-                          </div>
-                        </div>
-                        <div className="mt-8">
-                          <h4 className="font-medium mb-3">Next Payment</h4>
-                          <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
-                            <div>
-                              <span className="text-sm text-blue-800">Expected on {salaryInfo.nextPayment}</span>
-                            </div>
-                            <span className="font-bold text-blue-800">₹{salaryInfo.total}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
+                
               </Tabs>
             </div>
           </div>

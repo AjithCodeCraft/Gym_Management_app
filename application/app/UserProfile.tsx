@@ -77,24 +77,41 @@ const UserProfile = () => {
         </View>
       </View>
 
-      {/* Subscriptions */}
-      {user?.subscriptions && user.subscriptions.length > 0 && (
-        <View style={styles.subscriptionsContainer}>
-          <Text style={styles.subscriptionsTitle}>Subscriptions</Text>
-          {user.subscriptions.map((subscription: any) => (
-            <View key={subscription.id} style={styles.subscriptionItem}>
-              <Text style={styles.subscriptionName}>{subscription.subscription.name}</Text>
-              <Text style={styles.subscriptionDetails}>
-                {subscription.subscription.description} (${subscription.subscription.price})
-              </Text>
-              <Text style={styles.subscriptionDates}>
-                {subscription.start_date} to {subscription.end_date}
-              </Text>
-              <Text style={styles.subscriptionStatus}>Status: {subscription.status}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+      {/* Subscriptions Section */}
+{user?.subscriptions && user.subscriptions.length > 0 && (
+  <View style={styles.subscriptionsContainer}>
+    {/* Section Title */}
+    <Text style={styles.subscriptionsTitle}>Subscriptions</Text>
+    
+    {/* Loop through each subscription */}
+    {user.subscriptions.map((subscription: any) => (
+      <View key={subscription.id} style={styles.subscriptionItem}>
+        
+        {/* Subscription Name */}
+        <Text style={styles.subscriptionName}>
+          {subscription.subscription.name}
+        </Text>
+
+        {/* Subscription Description & Price */}
+        <Text style={styles.subscriptionDetails}>
+          {subscription.subscription.description}{"\n"}{"\n"}
+          Price: (${subscription.subscription.price})
+        </Text>
+
+        {/* Subscription Duration */}
+        <Text style={styles.subscriptionDates}>
+          {subscription.start_date} to {subscription.end_date}
+        </Text>
+
+        {/* Subscription Status */}
+        <Text style={styles.subscriptionStatus}>
+          Status: {subscription.status}
+        </Text>
+        
+      </View>
+    ))}
+  </View>
+)}
     </ScrollView>
   );
 };

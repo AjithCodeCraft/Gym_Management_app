@@ -1,18 +1,56 @@
-import React, { useState } from 'react';
-import { Dumbbell, BarChart, Calendar, Users, MessageSquare, Settings, LogOut, Menu } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Dumbbell, BarChart, Calendar, Users, Settings, LogOut, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import Cookies from 'js-cookie';
+import api from "@/pages/api/axios";
+import AvatarIcon from './profile/AvatarIcon';
 
 const TrainerSidebar = () => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [trainerName, setTrainerName] = useState("");
 
-  const isActive = (path) => {
-    return router.pathname === path;
+  useEffect(() => {
+    const firebaseId = Cookies.get('trainer_id'); 
+
+    if (firebaseId) {
+      const fetchTrainerDetails = async () => {
+        try {
+          const response = await api.get(`user/${firebaseId}/`, {
+            headers: {
+              Authorization: `Bearer ${Cookies.get('access_token')}`
+            }
+          });
+
+          setTrainerName(response.data.name);
+        } catch (error) {
+          console.error('Error fetching trainer details:', error);
+          setTrainerName("Unknown Trainer");
+        }
+      };
+
+      fetchTrainerDetails();
+    }
+  }, []);
+
+  const isActive = (path) => router.pathname === path;
+
+  const toggleMenu = () => setIsOpen(!isOpen);
+
+  const handleLogout = () => {
+    Cookies.remove('trainer_id');
+    Cookies.remove('access_token');
+    Cookies.remove('id');
+    router.push('/login'); // Redirect to login page after logout
   };
 
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
+  // Extract initials from the trainer name
+  const getInitials = (name) => {
+    const words = name.split(" ");
+    return words.length > 1
+      ? words[0][0] + words[1][0]
+      : words[0][0];
   };
 
   return (
@@ -34,12 +72,10 @@ const TrainerSidebar = () => {
           {/* Navigation Links */}
           <div className="flex-grow flex flex-col px-2 mt-2 md:mt-4">
             <div className="space-y-1">
-              <Link href="/trainer" className="w-full">
+              <Link href="/trainer">
                 <button
                   className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/trainer/dashboard')
-                      ? 'bg-orange-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    isActive('/trainer/dashboard') ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   <BarChart className="mr-3 h-5 w-5" />
@@ -49,25 +85,12 @@ const TrainerSidebar = () => {
 
               <div className="my-4 border-t border-gray-200 w-full"></div>
 
-              <Link href="/trainer/schedule" className="w-full">
-                <button
-                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/trainer/schedule')
-                      ? 'bg-orange-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Calendar className="mr-3 h-5 w-5" />
-                  Schedule
-                </button>
-              </Link>
+            
 
-              <Link href="/trainer/clients" className="w-full">
+              <Link href="/trainer/clients">
                 <button
                   className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/trainer/clients')
-                      ? 'bg-orange-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    isActive('/trainer/clients') ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   <Users className="mr-3 h-5 w-5" />
@@ -76,31 +99,18 @@ const TrainerSidebar = () => {
               </Link>
 
               
-
-              <Link href="/trainer/settings" className="w-full">
-                <button
-                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
-                    isActive('/trainer/settings')
-                      ? 'bg-orange-500 text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Settings className="mr-3 h-5 w-5" />
-                  Settings
-                </button>
-              </Link>
             </div>
           </div>
 
           {/* Footer - User Profile and Logout */}
           <div className="px-4 py-4 mt-auto border-t border-gray-200">
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-semibold">
-                JD
-              </div>
+              {/* Profile Icon with Initials */}
+              <AvatarIcon user={{ name: getInitials(trainerName) }} />
+
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700">John Doe</p>
-                <button className="flex items-center text-xs text-red-500 mt-1">
+                <p className="text-sm font-medium text-gray-700">{trainerName}</p>
+                <button onClick={handleLogout} className="flex items-center text-xs text-red-500 mt-1">
                   <LogOut className="h-3 w-3 mr-1" />
                   Sign out
                 </button>

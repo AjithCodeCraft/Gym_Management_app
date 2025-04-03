@@ -212,13 +212,13 @@ const AppBar = () => {
           end={{ x: 1, y: 0 }}
           style={styles.gradient}
         />
-        {/* Hamburger Menu */}
+        {/* Hamburger Menu
         <TouchableOpacity
           onPress={toggleMenu}
           style={[styles.icon, { backgroundColor: menuVisible ? 'rgba(255,255,255,0.2)' : 'transparent' }]}
         >
           <Ionicons name={menuVisible ? "close" : "menu"} size={26} color="white" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* App Title */}
         <Text style={styles.title}>FortiFit</Text>
@@ -329,13 +329,7 @@ const AppBar = () => {
               <Text style={styles.profileMenuItemText}>View Profile</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigateTo('/account')}
-              style={styles.profileMenuItem}
-            >
-              <Ionicons name="key" size={20} color="#f97316" />
-              <Text style={styles.profileMenuItemText}>Account</Text>
-            </TouchableOpacity>
+            
 
             <TouchableOpacity
               onPress={handleLogOut}
