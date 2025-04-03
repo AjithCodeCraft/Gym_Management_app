@@ -28,8 +28,8 @@ The Gym Management System is a comprehensive solution designed to address the ch
 ### Steps
 
 # Clone the Repository
-git clone https://github.com/your-username/gym-management-system.git
-cd gym-management-system
+git clone https://github.com/ajithcodecraft/gym_management_app.git
+gym_management_app.git
 
 # Set Up Backend
 cd backend
@@ -43,25 +43,6 @@ python manage.py runserver
 cd ../frontend
 npm install
 npm run dev
-
-# Set Up Database
-# Ensure NeonDB is running and configure the database settings in `backend/.env`.
-
-# Run the Application
-# Backend: http://localhost:8000
-# Frontend: http://localhost:3000
-
-## Usage
-
-# Access the Admin Dashboard
-# Navigate to http://localhost:8000/admin and log in with your admin credentials.
-
-# User Interface
-# Access the user interface at http://localhost:3000 and explore the features.
-
-# Trainer Portal
-# Trainers can log in and manage their schedules, interactions, and salary details.
-
 
 ## Technologies Used
 
