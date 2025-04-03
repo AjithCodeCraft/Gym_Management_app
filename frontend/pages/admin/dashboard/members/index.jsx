@@ -29,32 +29,33 @@ const Members = () => {
   const [cancelError, setCancelError] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showAllPaymentsModal, setShowAllPaymentsModal] = useState(false);
+  const [userPayments, setUserPayments] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
 
-  // Fetch members data when the component mounts
+  // Fetch initial members data when the component mounts
   useEffect(() => {
     document.body.style.zoom = "95%";
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
       try {
         const accessToken = Cookies.get("access_token");
         if (!accessToken) {
           throw new Error("Access token not found");
         }
 
+        // First fetch only the basic user data
         const membersResponse = await api.get("list_users_and_trainers/?type=user", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
 
-        const membersWithPayments = await Promise.all(
-          membersResponse.data.map(async (member) => {
-            const paymentsResponse = await api.get(`user-payments/${member.id}/`, {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
-            return { ...member, payments: paymentsResponse.data.payments };
-          })
-        );
-
-        setMembers(membersWithPayments);
+        setMembers(membersResponse.data);
         setLoading(false);
+
+        // Then fetch additional data in the background
+        fetchAdditionalData(membersResponse.data, accessToken);
+
+        // Also fetch plans and trainers in the background since we'll need them for modals
+        fetchPlansAndTrainers(accessToken);
       } catch (error) {
         console.error("Error fetching data:", error);
         setError(error.message);
@@ -62,7 +63,41 @@ const Members = () => {
       }
     };
 
-    fetchData();
+    const fetchAdditionalData = async (membersData, token) => {
+      try {
+        const membersWithDetails = await Promise.all(
+          membersData.map(async (member) => {
+            try {
+              const paymentsResponse = await api.get(`user-payments/${member.id}/`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              return { ...member, payments: paymentsResponse.data.payments };
+            } catch (error) {
+              console.error(`Error fetching payments for user ${member.id}:`, error);
+              return { ...member, payments: [] };
+            }
+          })
+        );
+        setMembers(membersWithDetails);
+      } catch (error) {
+        console.error("Error fetching additional data:", error);
+      }
+    };
+
+    const fetchPlansAndTrainers = async (token) => {
+      try {
+        const [plansResponse, trainersResponse] = await Promise.all([
+          api.get("subscriptions/", { headers: { Authorization: `Bearer ${token}` } }),
+          api.get("list_users_and_trainers/?type=trainer", { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        setAvailablePlans(plansResponse.data);
+        setAvailableTrainers(trainersResponse.data);
+      } catch (error) {
+        console.error("Error fetching plans or trainers:", error);
+      }
+    };
+
+    fetchInitialData();
   }, []);
 
   // Debounced search handler
@@ -94,8 +129,8 @@ const Members = () => {
   const handleCancelUpgrade = async () => {
     if (!userToCancel) return;
 
-    setIsCancelling(true); // Show "Cancelling..."
-    setCancelError(null);  // Clear previous errors before making API call
+    setIsCancelling(true);
+    setCancelError(null);
 
     try {
       const accessToken = Cookies.get("access_token");
@@ -111,14 +146,12 @@ const Members = () => {
         }
       );
 
-      // Check if API response contains the error message
       if (response.data?.error?.includes("No active subscription found")) {
         setCancelError("No active subscription found.");
         setIsCancelling(false);
         return;
       }
 
-      // Update members list
       setMembers((prevMembers) =>
         prevMembers.map((member) =>
           member.id === userToCancel.id
@@ -137,7 +170,7 @@ const Members = () => {
         )
       );
 
-      closeCancelModal(); // Close modal after success
+      closeCancelModal();
     } catch (error) {
       console.log("Error cancelling subscription:", error);
 
@@ -147,26 +180,15 @@ const Members = () => {
         setCancelError("Something went wrong. Please try again.");
       }
     } finally {
-      setIsCancelling(false); // Reset button state
+      setIsCancelling(false);
     }
   };
 
-  // Function to upgrade a member's plan
   const handleUpgradePlan = async (user) => {
-    try {
-      const accessToken = Cookies.get("access_token");
-      const response = await api.get("subscriptions/", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      setAvailablePlans(response.data);
-      setSelectedUser(user);
-      setSelectedPlanId(null); // Reset selected plan when opening modal
-      setSelectedPaymentMethod(""); // Reset selected payment method
-      setShowPlansModal(true);
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-      setError(error.message);
-    }
+    setSelectedUser(user);
+    setSelectedPlanId(null);
+    setSelectedPaymentMethod("");
+    setShowPlansModal(true);
   };
 
   const handlePlanSelection = async () => {
@@ -180,7 +202,7 @@ const Members = () => {
       return;
     }
 
-    setIsUpdating(true); // Start updating animation
+    setIsUpdating(true);
 
     try {
       const accessToken = Cookies.get("access_token");
@@ -197,13 +219,12 @@ const Members = () => {
         }
       );
 
-      // Find the selected plan details for immediate UI update
       const selectedPlan = availablePlans.find(plan => plan.id === selectedPlanId);
 
       const startDate = new Date();
       const endDate = new Date();
       endDate.setMonth(startDate.getMonth() + (selectedPlan.duration || 1));
-      // Update the user's subscriptions in the UI
+
       setMembers(prevMembers =>
         prevMembers.map(member =>
           member.id === selectedUser.id
@@ -216,7 +237,7 @@ const Members = () => {
                 duration: selectedPlan.duration,
                 price: selectedPlan.price,
                 has_personal_training: selectedPlan.personal_training,
-                end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0], // Ensure end date is updated
+                end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0],
               },
               payment_method: selectedPaymentMethod,
             }
@@ -224,7 +245,6 @@ const Members = () => {
         )
       );
 
-      // Update selected user in UI
       setSelectedUser(prev => ({
         ...prev,
         subscriptions: {
@@ -234,40 +254,28 @@ const Members = () => {
           duration: selectedPlan.duration,
           price: selectedPlan.price,
           has_personal_training: selectedPlan.personal_training,
-          end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0], // Ensure end date is updated
+          end_date: selectedPlan.end_date || endDate.toISOString().split("T")[0],
         },
         payment_method: selectedPaymentMethod,
       }));
 
       setTimeout(() => {
-        setIsUpdating(false); // Stop updating animation
-        // Keep the modal open for a moment so user can see success message
+        setIsUpdating(false);
         setTimeout(() => {
-          setShowPlansModal(false); // Close modal after success
+          setShowPlansModal(false);
         }, 1000);
       }, 1000);
     } catch (error) {
       console.error("Error upgrading plan:", error);
       setError(error.message);
-      setIsUpdating(false); // Stop updating animation
+      setIsUpdating(false);
     }
   };
 
-  // Function to open trainer selection modal
   const handleAssignTrainer = async (user) => {
-    try {
-      const accessToken = Cookies.get("access_token");
-      const response = await api.get("list_users_and_trainers/?type=trainer", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      setAvailableTrainers(response.data);
-      setSelectedUser(user);
-      setSelectedTrainerId(null); // Reset selected trainer when opening modal
-      setShowTrainersModal(true);
-    } catch (error) {
-      console.error("Error fetching trainers:", error);
-      setError(error.message);
-    }
+    setSelectedUser(user);
+    setSelectedTrainerId(null);
+    setShowTrainersModal(true);
   };
 
   const handleTrainerSelection = async () => {
@@ -276,7 +284,7 @@ const Members = () => {
       return;
     }
 
-    setIsUpdating(true); // Start updating animation
+    setIsUpdating(true);
 
     try {
       const accessToken = Cookies.get("access_token");
@@ -291,7 +299,6 @@ const Members = () => {
         }
       );
 
-      // Update the user's trainer in the UI
       setMembers(prevMembers =>
         prevMembers.map(member =>
           member.id === selectedUser.id
@@ -306,7 +313,6 @@ const Members = () => {
         )
       );
 
-      // Update selected user in UI
       setSelectedUser(prev => ({
         ...prev,
         trainer: {
@@ -316,20 +322,18 @@ const Members = () => {
       }));
 
       setTimeout(() => {
-        setIsUpdating(false); // Stop updating animation
-        // Keep the modal open for a moment so user can see success message
+        setIsUpdating(false);
         setTimeout(() => {
-          setShowTrainersModal(false); // Close modal after success
+          setShowTrainersModal(false);
         }, 1000);
       }, 1000);
     } catch (error) {
       console.error("Error assigning trainer:", error);
       setError(error.message);
-      setIsUpdating(false); // Stop updating animation
+      setIsUpdating(false);
     }
   };
 
-  // Function to view assigned trainer details
   const handleViewAssignedTrainer = async (user) => {
     try {
       const accessToken = Cookies.get("access_token");
@@ -357,6 +361,48 @@ const Members = () => {
   const closePaymentModal = () => {
     setShowPaymentModal(false);
     setSelectedPayment(null);
+  };
+
+  const fetchUserPayments = async (userId) => {
+    setLoadingPayments(true);
+    setShowAllPaymentsModal(true); // Show modal immediately while loading
+
+    try {
+      const accessToken = Cookies.get("access_token");
+      const response = await api.get(`user-payments/${userId}/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      // Use memoized sorting for better performance
+      const sortedPayments = response.data.payments
+        .map(p => ({
+          ...p,
+          payment_date: new Date(p.payment_date).getTime() // Convert to timestamp for faster sorting
+        }))
+        .sort((a, b) => b.payment_date - a.payment_date)
+        .map(p => ({
+          ...p,
+          payment_date: new Date(p.payment_date).toISOString() // Convert back to string
+        }));
+
+      setUserPayments(sortedPayments);
+    } catch (error) {
+      console.error("Error fetching user payments:", error);
+      setError("Failed to load payments. Please try again.");
+      setUserPayments([]); // Clear previous payments on error
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  const openAllPaymentsModal = (user) => {
+    setSelectedUser(user);
+    fetchUserPayments(user.id);
+  };
+
+  const closeAllPaymentsModal = () => {
+    setShowAllPaymentsModal(false);
+    setUserPayments([]);
   };
 
   if (loading) {
@@ -470,9 +516,26 @@ const Members = () => {
                             {member.payments && member.payments.length > 0 ? (
                               <>
                                 {member.payments[0].payment_method || "N/A"}
-                                {member.payments[0].payment_method && ["offline", "online"].includes(member.payments[0].payment_method) && (
-                                  <img src="/invoice.svg" alt="Invoice Icon" width="20" height="20" onClick={() => openPaymentModal(member.payments[0])} className="cursor-pointer ml-1" />
-                                )}
+                                <div className="flex ml-1">
+                                  <img
+                                    src="/invoice.svg"
+                                    alt="Invoice Icon"
+                                    width="20"
+                                    height="20"
+                                    onClick={() => openPaymentModal(member.payments[0])}
+                                    className="cursor-pointer"
+                                    title="View latest payment"
+                                  />
+                                  {member.payments.length > 1 && (
+                                    <span
+                                      className="text-xs text-blue-500 ml-1 cursor-pointer underline"
+                                      onClick={() => openAllPaymentsModal(member)}
+                                      title="View all payments"
+                                    >
+                                      +{member.payments.length - 1} more
+                                    </span>
+                                  )}
+                                </div>
                               </>
                             ) : (
                               "N/A"
@@ -536,8 +599,87 @@ const Members = () => {
         </main>
       </div>
 
+      {/* All Payments Modal */}
+      {showAllPaymentsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-4 w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <h2 className="text-lg font-bold mb-3">
+              Payment History for {selectedUser?.name}
+            </h2>
+            <div className="flex-1 overflow-y-auto">
+              {loadingPayments ? (
+                <div className="flex flex-col items-center justify-center h-48">
+                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500 mb-3"></div>
+                  <p className="text-gray-600">Loading payment history...</p>
+                  <p className="text-xs text-gray-400 mt-1">This may take a moment</p>
+                </div>
+              ) : userPayments.length > 0 ? (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {userPayments.map((payment, index) => (
+                      <tr key={index}>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(payment.payment_date).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          ₹{payment.amount}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {payment.payment_method}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full ${payment.status === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                            {payment.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <button
+                            onClick={() => openPaymentModal(payment)}
+                            className="text-blue-500 hover:text-blue-700"
+                          >
+                            <img src="/invoice.svg" alt="Invoice Icon" width="20" height="20" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-center text-gray-500 py-4">No payment history found</p>
+              )}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                className="px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
+                onClick={closeAllPaymentsModal}
+                disabled={loadingPayments}
+              >
+                {loadingPayments ? 'Closing...' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rest of the modals remain the same as before */}
       {showPlansModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <h2 className="text-lg font-bold mb-3">Select a Plan for {selectedUser?.name}</h2>
 
@@ -563,6 +705,7 @@ const Members = () => {
                 <option value="">Select Payment Method</option>
                 <option value="online">UPI</option>
                 <option value="offline">Offline</option>
+                <option value="fortifit">Fortifit</option>
               </select>
             </div>
 
@@ -626,7 +769,7 @@ const Members = () => {
       )}
 
       {showTrainersModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <h2 className="text-lg font-bold mb-3">Select a Trainer for {selectedUser?.name}</h2>
 
@@ -691,7 +834,7 @@ const Members = () => {
       )}
 
       {showTrainerDetailsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-md shadow-lg">
             <h2 className="text-lg font-bold mb-3 text-gray-900 border-b border-gray-200 pb-1.5">Assigned Trainer Details</h2>
             {trainerDetails && trainerDetails.assigned_trainers && trainerDetails.assigned_trainers.length > 0 ? (
@@ -735,7 +878,7 @@ const Members = () => {
       )}
 
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-md">
             <h2 className="text-lg font-bold mb-3">Confirm Cancellation</h2>
             <p className="text-gray-700">Are you sure you want to cancel the subscription for {userToCancel?.name}?</p>
@@ -767,13 +910,13 @@ const Members = () => {
       )}
 
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 w-full max-w-md shadow-lg">
             <h2 className="text-lg font-bold mb-3 text-gray-900 border-b border-gray-200 pb-1.5">Payment Details</h2>
             {selectedPayment && (
               <div className="mt-4">
                 <p><strong>User:</strong> {selectedPayment.user_name}</p>
-                <p><strong>Amount:</strong> {selectedPayment.amount}</p>
+                <p><strong>Amount:</strong> ₹{selectedPayment.amount}</p>
                 <p><strong>Payment Date:</strong> {new Date(selectedPayment.payment_date).toLocaleDateString("en-GB")}</p>
                 <p><strong>Payment Method:</strong> {selectedPayment.payment_method}</p>
                 <p><strong>Status:</strong> {selectedPayment.status}</p>
