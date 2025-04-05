@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { apiAuth } from '@/api/axios';
 
@@ -31,6 +31,16 @@ const UserProfile = () => {
     fetchUserProfile();
   }, []);
 
+  const getInitials = (name: string | undefined): string => {
+    if (!name) return '';
+    const nameParts: string[] = name.split(' ');
+    let initials: string = '';
+    nameParts.forEach((part: string) => {
+      initials += part.charAt(0).toUpperCase();
+    });
+    return initials;
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -51,10 +61,16 @@ const UserProfile = () => {
     <ScrollView contentContainerStyle={styles.container}>
       {/* Profile Header */}
       <View style={styles.profileHeader}>
-        <Image
-          source={{ uri: user?.profile_picture_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8dXNlciUyMHByb2ZpbGV8ZW58MHx8MHx8fDA%3D' }}
-          style={styles.profileImage}
-        />
+        {user?.profile_picture_url ? (
+          <Image
+            source={{ uri: user.profile_picture_url }}
+            style={styles.profileImage}
+          />
+        ) : (
+          <View style={styles.initialsContainer}>
+            <Text style={styles.initialsText}>{getInitials(user?.name)}</Text>
+          </View>
+        )}
         <Text style={styles.userName}>{user?.name || 'User Name'}</Text>
         <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
       </View>
@@ -78,40 +94,38 @@ const UserProfile = () => {
       </View>
 
       {/* Subscriptions Section */}
-{user?.subscriptions && user.subscriptions.length > 0 && (
-  <View style={styles.subscriptionsContainer}>
-    {/* Section Title */}
-    <Text style={styles.subscriptionsTitle}>Subscriptions</Text>
-    
-    {/* Loop through each subscription */}
-    {user.subscriptions.map((subscription: any) => (
-      <View key={subscription.id} style={styles.subscriptionItem}>
-        
-        {/* Subscription Name */}
-        <Text style={styles.subscriptionName}>
-          {subscription.subscription.name}
-        </Text>
+      {user?.subscriptions && user.subscriptions.length > 0 && (
+        <View style={styles.subscriptionsContainer}>
+          {/* Section Title */}
+          <Text style={styles.subscriptionsTitle}>Subscriptions</Text>
 
-        {/* Subscription Description & Price */}
-        <Text style={styles.subscriptionDetails}>
-          {subscription.subscription.description}{"\n"}{"\n"}
-          Price: (${subscription.subscription.price})
-        </Text>
+          {/* Loop through each subscription */}
+          {user.subscriptions.map((subscription: any) => (
+            <View key={subscription.id} style={styles.subscriptionItem}>
+              {/* Subscription Name */}
+              <Text style={styles.subscriptionName}>
+                {subscription.subscription.name}
+              </Text>
 
-        {/* Subscription Duration */}
-        <Text style={styles.subscriptionDates}>
-          {subscription.start_date} to {subscription.end_date}
-        </Text>
+              {/* Subscription Description & Price */}
+              <Text style={styles.subscriptionDetails}>
+                {subscription.subscription.description}{"\n"}{"\n"}
+                Price: (${subscription.subscription.price})
+              </Text>
 
-        {/* Subscription Status */}
-        <Text style={styles.subscriptionStatus}>
-          Status: {subscription.status}
-        </Text>
-        
-      </View>
-    ))}
-  </View>
-)}
+              {/* Subscription Duration */}
+              <Text style={styles.subscriptionDates}>
+                {subscription.start_date} to {subscription.end_date}
+              </Text>
+
+              {/* Subscription Status */}
+              <Text style={styles.subscriptionStatus}>
+                Status: {subscription.status}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -147,6 +161,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 3,
     borderColor: '#f97316',
+  },
+  initialsContainer: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#f97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+  initialsText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#f97316',
   },
   userName: {
     fontSize: 28,

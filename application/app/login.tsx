@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  Image, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
   StyleSheet,
   Alert
 } from "react-native";
@@ -14,7 +14,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from 'expo-constants';
 import api from '../api/axios';
-import LoadingSpinner from "@/components/LoadingSpinner";
 import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 
 const API_URL = Constants.expoConfig?.extra?.API_URL;
@@ -32,13 +31,13 @@ export default function LoginPage() {
       Alert.alert("Error", "Please enter both email and password!");
       return;
     }
-    
+
     setIsLoading(true);
     const credentials = {
       email: email,
       password: password
     };
-    
+
     try {
       const response = await api.post(`/login/`, credentials, {
         headers: {
@@ -62,10 +61,8 @@ export default function LoginPage() {
   if (isLoggedIn) {
     return <Redirect href="/(tabs)/home" />;
   }
-  
-  return isLoading ? (
-    <LoadingSpinner />
-  ) : (
+
+  return (
     <View style={styles.container}>
       {/* Left Side - Login Form */}
       <View style={styles.loginForm}>
@@ -107,7 +104,7 @@ export default function LoginPage() {
           <View style={styles.inputContainer}>
             <View style={styles.passwordHeader}>
               <Text style={styles.inputLabel}>Password</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setIsForgotPasswordModalVisible(true)}
                 activeOpacity={0.7}
               >
@@ -125,7 +122,7 @@ export default function LoginPage() {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 activeOpacity={0.7}
               >
@@ -139,12 +136,12 @@ export default function LoginPage() {
           </View>
 
           {/* Login Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.loginButton,
               isLoading && styles.loginButtonDisabled
-            ]} 
-            onPress={handleLogin} 
+            ]}
+            onPress={handleLogin}
             disabled={isLoading}
             activeOpacity={0.7}
           >
