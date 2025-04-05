@@ -66,7 +66,7 @@ const TrainerSidebar = () => {
           {/* Logo and Brand */}
           <div className="flex items-center flex-shrink-0 px-4 py-5 md:py-4">
             <Dumbbell className="h-8 w-8 text-orange-500" />
-            <h1 className="ml-2 text-xl font-bold">FitPro Gym</h1>
+            <h1 className="ml-2 text-xl font-bold">FortiFit</h1>
           </div>
 
           {/* Navigation Links */}

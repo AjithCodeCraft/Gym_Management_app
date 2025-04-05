@@ -20,7 +20,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center md:hidden">
             <Dumbbell className="h-8 w-8 text-orange-500" />
-            <h1 className="ml-2 text-xl font-bold">FitPro</h1>
+            <h1 className="ml-2 text-xl font-bold">FortiFit</h1>
           </div>
           
           <div className="flex-1 px-2 flex justify-end sm:justify-between">
