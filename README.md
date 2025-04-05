@@ -41,12 +41,20 @@ cd Gym_Management_app
 ```
 
 ### 2. Backend
+```bash
 cd backend
+```
 
 #### Create and activate virtual environment
+```bash
 python -m venv venv
+```
+```bash
 source venv/bin/activate  # Linux/macOS
+```
+```bash
 venv\Scripts\activate     # Windows
+```
 
 #### Install requirements
 ```bash
