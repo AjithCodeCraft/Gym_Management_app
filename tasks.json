@@ -1,0 +1,76 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Backend",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "Set-Location backend; venv\\Scripts\\activate; Set-Location Gym_Management_System; python manage.py runserver"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run Frontend",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "Set-Location frontend; npm run dev"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run Ngrok",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "ngrok http 8000"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run Expo",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "Set-Location application; npx expo start"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run All Services",
+            "type": "shell",
+            "dependsOn": [
+                "Run Backend",
+                "Run Frontend",
+                "Run Ngrok",
+                "Run Expo"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
