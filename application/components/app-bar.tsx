@@ -245,72 +245,7 @@ const AppBar = () => {
         </View>
       </View>
 
-      {/* Sidebar Menu with Animation */}
-      {menuVisible && (
-        <>
-          <Animated.View
-            style={[
-              styles.sideMenu,
-              { transform: [{ translateX: slideAnim }] }
-            ]}
-          >
-            <TouchableOpacity
-              onPress={() => navigateTo('/home')}
-              style={styles.menuItemHome}
-            >
-              <Ionicons name="home" size={24} color="#f97316" />
-              <Text style={styles.menuItemText}>Home</Text>
-            </TouchableOpacity>
-
-            {/* <TouchableOpacity
-              onPress={() => navigateTo('/community')}
-              style={styles.menuItemHome}
-            >
-              <Ionicons name="people" size={24} color="#f97316"/>
-              <Text style={styles.menuItemText}>Community</Text>
-            </TouchableOpacity> */}
-
-            <TouchableOpacity
-              onPress={() => navigateTo('/progress')}
-              style={styles.menuItemHome}
-            >
-              <Ionicons name="trending-up" size={24} color="#f97316" />
-              <Text style={styles.menuItemText}>Progress</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigateTo('/challenges')}
-              style={styles.menuItemHome}
-            >
-              <Ionicons name="trophy" size={24} color="#f97316" />
-              <Text style={styles.menuItemText}>Challenges</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigateTo('/settings')}
-              style={styles.menuItemHome}
-            >
-              <Ionicons name="settings" size={24} color="#f97316" />
-              <Text style={styles.menuItemText}>Settings</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => navigateTo('/help')}
-              style={styles.menuItemHome}
-            >
-              <Ionicons name="help-circle" size={24} color="#f97316" />
-              <Text style={styles.menuItemText}>Help</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Overlay to close menu when clicking outside */}
-          <TouchableOpacity
-            style={styles.overlay}
-            onPress={toggleMenu}
-            activeOpacity={1}
-          />
-        </>
-      )}
+      
 
       {/* Profile Menu Dropdown with Animation */}
       {profileMenuVisible && (
