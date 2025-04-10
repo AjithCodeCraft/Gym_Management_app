@@ -44,8 +44,6 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     'Authorization',
 ]
 
-
-
 FIREBASE_CREDENTIALS_PATH = r"../gymmanagement-a605b-firebase-adminsdk-fbsvc-e4a485d4b0.json"
 
 # Initialize Firebase if not already initialized

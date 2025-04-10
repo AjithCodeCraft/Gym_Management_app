@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { ScrollView, Alert, View, ActivityIndicator, StyleSheet, Modal, Text, TouchableOpacity, Linking } from "react-native";
+import {
+  ScrollView,
+  Alert,
+  View,
+  ActivityIndicator,
+  StyleSheet,
+  Modal,
+  Text,
+  TouchableOpacity,
+  Linking,
+} from "react-native";
 import PlanCard from "@/components/gym/PlanCard";
 import FeaturesCard from "@/components/gym/FeaturesCard";
 import UpgradeOptionsModal from "@/components/gym/UpgradeOptionsModal";
@@ -57,7 +67,9 @@ const Gym: React.FC = () => {
   const [showUpgradeOptions, setShowUpgradeOptions] = useState(false);
   const [showTrainerSelection, setShowTrainerSelection] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "quarterly" | "yearly">("monthly");
+  const [billingCycle, setBillingCycle] = useState<
+    "monthly" | "quarterly" | "yearly"
+  >("monthly");
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
   const [userPlan, setUserPlan] = useState<any>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -70,7 +82,9 @@ const Gym: React.FC = () => {
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentLinkId, setPaymentLinkId] = useState<string | null>(null);
-  const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [paymentTimeout, setPaymentTimeout] = useState<NodeJS.Timeout | null>(
+    null,
+  );
   const [showBillModal, setShowBillModal] = useState(false);
   const [paymentNotConfirmed, setPaymentNotConfirmed] = useState(false);
   const [countdown, setCountdown] = useState(60); // 1-minute countdown
@@ -81,11 +95,16 @@ const Gym: React.FC = () => {
     const fetchData = async () => {
       try {
         // Fetch user subscription details
-        const userSubscriptionResponse = await apiAuth.get("subscriptions/user/");
+        const userSubscriptionResponse = await apiAuth.get(
+          "subscriptions/user/",
+        );
         const userSubscriptionData = userSubscriptionResponse.data;
 
         if (!Array.isArray(userSubscriptionData)) {
-          console.error("Expected user subscriptions to be an array but got:", userSubscriptionData);
+          console.error(
+            "Expected user subscriptions to be an array but got:",
+            userSubscriptionData,
+          );
           return;
         }
 
@@ -134,9 +153,18 @@ const Gym: React.FC = () => {
           if (subscription.name === "Basic Plan") {
             features = ["Access to gym facilities", "Basic equipment usage"];
           } else if (subscription.name === "Pro Plan") {
-            features = ["Access to all gym facilities", "Advanced equipment usage", "Group classes"];
+            features = [
+              "Access to all gym facilities",
+              "Advanced equipment usage",
+              "Group classes",
+            ];
           } else if (subscription.name === "Elite Plan") {
-            features = ["Access to all gym facilities", "Advanced equipment usage", "Group classes", "Priority booking"];
+            features = [
+              "Access to all gym facilities",
+              "Advanced equipment usage",
+              "Group classes",
+              "Priority booking",
+            ];
           }
 
           if (subscription.personal_training) {
@@ -180,7 +208,10 @@ const Gym: React.FC = () => {
           user_id: trainerData.user_id,
         });
 
-        await AsyncStorage.setItem("trainer_id", trainerData.trainer_id.toString());
+        await AsyncStorage.setItem(
+          "trainer_id",
+          trainerData.trainer_id.toString(),
+        );
         await AsyncStorage.setItem("trainer_name", trainerData.trainer_name);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -193,22 +224,20 @@ const Gym: React.FC = () => {
   }, []);
 
   useEffect(() => {
-  const filtered = plans
-    .filter((plan) => plan.price[billingCycle] > 0)
-    .sort((a, b) => {
-      // Default sorting by price
-      if (billingCycle !== 'quarterly') {
-        return b.price[billingCycle] - a.price[billingCycle];
-      }
-      
-      
-      
-      // Default sorting for other cases
-      return a.price[billingCycle] - b.price[billingCycle];
-    });
-  
-  setFilteredPlans(filtered);
-}, [billingCycle, plans]);
+    const filtered = plans
+      .filter((plan) => plan.price[billingCycle] > 0)
+      .sort((a, b) => {
+        // Default sorting by price
+        if (billingCycle !== "quarterly") {
+          return b.price[billingCycle] - a.price[billingCycle];
+        }
+
+        // Default sorting for other cases
+        return a.price[billingCycle] - b.price[billingCycle];
+      });
+
+    setFilteredPlans(filtered);
+  }, [billingCycle, plans]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -228,7 +257,10 @@ const Gym: React.FC = () => {
     setSelectedPlan(plan);
     if (plan.name === "Pro Plan" || plan.name === "Elite Plan") {
       const filteredTrainers = allTrainers.filter((trainer) => {
-        const experienceYears = parseInt(trainer.trainer_profile.experience_years, 10);
+        const experienceYears = parseInt(
+          trainer.trainer_profile.experience_years,
+          10,
+        );
         if (plan.name === "Pro Plan") {
           return experienceYears < 3;
         } else if (plan.name === "Elite Plan") {
@@ -265,7 +297,10 @@ const Gym: React.FC = () => {
         setShowPaymentModal(true);
         setCountdown(60); // Reset countdown when payment link is generated
       } else {
-        Alert.alert("Error", response.data.message || "Failed to generate payment link.");
+        Alert.alert(
+          "Error",
+          response.data.message || "Failed to generate payment link.",
+        );
       }
     } catch (error) {
       console.error("Error generating payment link:", error);
@@ -284,7 +319,10 @@ const Gym: React.FC = () => {
             payment_link_id: paymentLinkId,
           });
 
-          if (response.status === 200 && response.data.payment_status === "confirmed") {
+          if (
+            response.status === 200 &&
+            response.data.payment_status === "confirmed"
+          ) {
             setPaymentSuccess(true);
             setShowBillModal(true);
 
@@ -293,16 +331,29 @@ const Gym: React.FC = () => {
               selected_plan_price: selectedPlan?.price[billingCycle],
               billing_cycle: billingCycle,
               selected_trainer_name: selectedTrainer?.name || null,
-              selected_trainer_specialization: selectedTrainer?.trainer_profile?.specialization || null,
-              selected_trainer_experience_years: selectedTrainer?.trainer_profile?.experience_years || null,
+              selected_trainer_specialization:
+                selectedTrainer?.trainer_profile?.specialization || null,
+              selected_trainer_experience_years:
+                selectedTrainer?.trainer_profile?.experience_years || null,
               start_date: new Date().toLocaleDateString(),
-              end_date: new Date(new Date().setMonth(new Date().getMonth() +
-                (billingCycle === "monthly" ? 1 : billingCycle === "quarterly" ? 3 : billingCycle === "yearly" ? 12 : 0))
+              end_date: new Date(
+                new Date().setMonth(
+                  new Date().getMonth() +
+                    (billingCycle === "monthly"
+                      ? 1
+                      : billingCycle === "quarterly"
+                        ? 3
+                        : billingCycle === "yearly"
+                          ? 12
+                          : 0),
+                ),
               ).toLocaleDateString(),
               purchase_date: new Date().toLocaleDateString(),
             });
-
-          } else if (response.status === 200 && response.data.message === "Payment not confirmed yet") {
+          } else if (
+            response.status === 200 &&
+            response.data.message === "Payment not confirmed yet"
+          ) {
             setShowPaymentModal(false);
           } else {
             setShowPaymentModal(false);
@@ -324,7 +375,10 @@ const Gym: React.FC = () => {
       const userSubscriptionData = userSubscriptionResponse.data;
 
       if (!Array.isArray(userSubscriptionData)) {
-        console.error("Expected user subscriptions to be an array but got:", userSubscriptionData);
+        console.error(
+          "Expected user subscriptions to be an array but got:",
+          userSubscriptionData,
+        );
         return;
       }
 
@@ -373,7 +427,10 @@ const Gym: React.FC = () => {
         user_id: trainerData.user_id,
       });
 
-      await AsyncStorage.setItem("trainer_id", trainerData.trainer_id.toString());
+      await AsyncStorage.setItem(
+        "trainer_id",
+        trainerData.trainer_id.toString(),
+      );
       await AsyncStorage.setItem("trainer_name", trainerData.trainer_name);
 
       const allTrainersResponse = await apiAuth.get("trainers/");
@@ -456,7 +513,11 @@ const Gym: React.FC = () => {
         onTrainerSelect={handleTrainerSelect}
       />
 
-      <Modal visible={showPaymentModal} transparent={true} animationType="slide">
+      <Modal
+        visible={showPaymentModal}
+        transparent={true}
+        animationType="slide"
+      >
         <View style={localStyles.modalContainer}>
           <View style={localStyles.modalContent}>
             {confirmingPayment ? (
@@ -466,7 +527,9 @@ const Gym: React.FC = () => {
                   Payment link will expire in: {countdown} seconds
                 </Text>
                 <ActivityIndicator size="large" color="orange" />
-                <Text style={localStyles.pleaseWaitText}>Please wait while we confirm your payment...</Text>
+                <Text style={localStyles.pleaseWaitText}>
+                  Please wait while we confirm your payment...
+                </Text>
               </View>
             ) : paymentSuccess ? (
               <View>
@@ -476,14 +539,38 @@ const Gym: React.FC = () => {
                 {selectedTrainer && (
                   <View>
                     <Text>Trainer: {selectedTrainer.name}</Text>
-                    <Text>Specialization: {selectedTrainer.trainer_profile.specialization}</Text>
-                    <Text>Experience: {selectedTrainer.trainer_profile.experience_years}</Text>
+                    <Text>
+                      Specialization:{" "}
+                      {selectedTrainer.trainer_profile.specialization}
+                    </Text>
+                    <Text>
+                      Experience:{" "}
+                      {selectedTrainer.trainer_profile.experience_years}
+                    </Text>
                   </View>
                 )}
                 <Text>Start Date: {new Date().toLocaleDateString()}</Text>
-                <Text>End Date: {new Date(new Date().setMonth(new Date().getMonth() + (billingCycle === 'monthly' ? 1 : billingCycle === 'quarterly' ? 3 : 12))).toLocaleDateString()}</Text>
+                <Text>
+                  End Date:{" "}
+                  {new Date(
+                    new Date().setMonth(
+                      new Date().getMonth() +
+                        (billingCycle === "monthly"
+                          ? 1
+                          : billingCycle === "quarterly"
+                            ? 3
+                            : 12),
+                    ),
+                  ).toLocaleDateString()}
+                </Text>
                 <Text>Purchase Date: {new Date().toLocaleDateString()}</Text>
-                <TouchableOpacity style={localStyles.confirmButton} onPress={() => { setShowPaymentModal(false); fetchUpdatedData(); }}>
+                <TouchableOpacity
+                  style={localStyles.confirmButton}
+                  onPress={() => {
+                    setShowPaymentModal(false);
+                    fetchUpdatedData();
+                  }}
+                >
                   <Text style={localStyles.buttonText}>Close</Text>
                 </TouchableOpacity>
               </View>
@@ -495,14 +582,26 @@ const Gym: React.FC = () => {
                 {selectedTrainer && (
                   <View>
                     <Text>Trainer: {selectedTrainer.name}</Text>
-                    <Text>Specialization: {selectedTrainer.trainer_profile.specialization}</Text>
-                    <Text>Experience: {selectedTrainer.trainer_profile.experience_years}</Text>
+                    <Text>
+                      Specialization:{" "}
+                      {selectedTrainer.trainer_profile.specialization}
+                    </Text>
+                    <Text>
+                      Experience:{" "}
+                      {selectedTrainer.trainer_profile.experience_years}
+                    </Text>
                   </View>
                 )}
-                <TouchableOpacity style={localStyles.confirmButton} onPress={handlePaymentConfirm}>
+                <TouchableOpacity
+                  style={localStyles.confirmButton}
+                  onPress={handlePaymentConfirm}
+                >
                   <Text style={localStyles.buttonText}>Confirm Payment</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={localStyles.cancelButton} onPress={() => setShowPaymentModal(false)}>
+                <TouchableOpacity
+                  style={localStyles.cancelButton}
+                  onPress={() => setShowPaymentModal(false)}
+                >
                   <Text style={localStyles.buttonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
