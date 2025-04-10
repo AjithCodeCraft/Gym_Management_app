@@ -57,9 +57,9 @@ type Trainer = {
 
 // Gym details
 const gymDetails = {
-  gymName: "Fitness Zone",
-  address: "123 Fitness Street, Health City, IN",
-  contactNumber: "+91-9876543210",
+  gymName: "FortiFit Gym",
+  address: "123 Fitness Street, Mumbai india, IN",
+  contactNumber: "+91-7736226798",
 };
 
 const Gym: React.FC = () => {
