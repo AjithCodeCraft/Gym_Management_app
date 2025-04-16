@@ -58,10 +58,11 @@ export default function Testimonials() {
 
   return (
     <motion.div
-      className="relative bg-[#131313] text-white px-6 py-16 rounded-3xl"
+      className="relative bg-[#131313] text-white px-6 py-16 rounded-3xl scroll-mt-28"
       initial={{ opacity: 0, y: 50 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 1 }}
+      id="Success"
     >
       {/* Heading */}
       <div className="text-center">

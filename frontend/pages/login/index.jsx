@@ -196,7 +196,7 @@ export default function LoginPage() {
       {/* Right Side Image */}
       <div className="relative hidden lg:block">
         <Image
-          src="/loginimage.png"
+          src="/community-blog2.jpg"
           alt="Login Cover"
           fill
           className="object-cover"

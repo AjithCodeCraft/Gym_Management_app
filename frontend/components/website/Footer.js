@@ -5,7 +5,7 @@ import { Mail, MapPin, Phone } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="relative bg-black text-white px-10 py-16 rounded-t-3xl">
+    <footer className="relative bg-black text-white px-10 py-16 rounded-t-3xl scroll-mt-28 " id="contact">
       {/* Top Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Subscribe Section */}
