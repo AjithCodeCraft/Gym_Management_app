@@ -6,7 +6,7 @@ import Image from "next/image";
 
 const SpecialitiesSection = () => {
   return (
-    <section className="relative w-full px-6 lg:px-16 py-16 bg-black text-white overflow-hidden">
+    <section  id ="specialities" className="relative w-full px-6 lg:px-16 py-16 bg-black text-white overflow-hidden">
 
       {/* Background Glow Effect (Behind Content) */}
       <div className="absolute -top-32 left-10 w-[700px] h-[500px] pointer-events-none -z-6">

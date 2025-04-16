@@ -39,7 +39,7 @@ const PricingSection = () => {
   const [billingCycle, setBillingCycle] = useState("monthly");
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#000000] p-6">
+    <div id="pricing" className="flex flex-col items-center justify-center min-h-screen bg-[#000000] p-6 scroll-mt-28">
       {/* Section Heading */}
       <h2 className="text-6xl font-extrabold text-[#F2F2F2] text-center mb-4">
         Choose Your Gym Membership
