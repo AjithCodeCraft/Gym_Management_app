@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import Cookies from 'js-cookie';
 import api from "@/pages/api/axios";
 import AvatarIcon from './profile/AvatarIcon';
+import Image from 'next/image';
 
 const TrainerSidebar = () => {
   const router = useRouter();
@@ -42,10 +43,9 @@ const TrainerSidebar = () => {
     Cookies.remove('trainer_id');
     Cookies.remove('access_token');
     Cookies.remove('id');
-    router.push('/login'); // Redirect to login page after logout
+    router.push('/login');
   };
 
-  // Extract initials from the trainer name
   const getInitials = (name) => {
     const words = name.split(" ");
     return words.length > 1
@@ -64,13 +64,21 @@ const TrainerSidebar = () => {
       <div className={`fixed md:static inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-30 md:z-0 w-64 bg-white shadow-md md:h-auto`}>
         <div className="flex flex-col h-full">
           {/* Logo and Brand */}
-          <div className="flex items-center flex-shrink-0 px-4 py-5 md:py-4">
-            <Dumbbell className="h-8 w-8 text-orange-500" />
-            <h1 className="ml-2 text-xl font-bold">FortiFit</h1>
+          <div className="flex items-center px-4 py-4">
+            <div className="flex items-center">
+              <Image
+                src="/g308.png"
+                alt="FitPro Gym Logo"
+                width={60}
+                height={40}
+                className="object-contain"
+              />
+              <h1 className="ml-2 text-xl font-bold">FortiFit Gym</h1>
+            </div>
           </div>
 
           {/* Navigation Links */}
-          <div className="flex-grow flex flex-col px-2 mt-2 md:mt-4">
+          <div className="flex-grow flex flex-col px-4 mt-2 md:mt-4">
             <div className="space-y-1">
               <Link href="/trainer">
                 <button
@@ -85,8 +93,6 @@ const TrainerSidebar = () => {
 
               <div className="my-4 border-t border-gray-200 w-full"></div>
 
-            
-
               <Link href="/trainer/clients">
                 <button
                   className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-md ${
@@ -97,17 +103,13 @@ const TrainerSidebar = () => {
                   Clients
                 </button>
               </Link>
-
-              
             </div>
           </div>
 
           {/* Footer - User Profile and Logout */}
           <div className="px-4 py-4 mt-auto border-t border-gray-200">
             <div className="flex items-center">
-              {/* Profile Icon with Initials */}
               <AvatarIcon user={{ name: getInitials(trainerName) }} />
-
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-700">{trainerName}</p>
                 <button onClick={handleLogout} className="flex items-center text-xs text-red-500 mt-1">
