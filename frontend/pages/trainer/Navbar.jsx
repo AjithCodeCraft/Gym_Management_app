@@ -31,7 +31,7 @@ const Navbar = ({ searchQuery, setSearchQuery }) => {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search members or trainers..."
+                  placeholder="Search for members..."
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

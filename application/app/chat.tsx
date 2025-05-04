@@ -29,7 +29,7 @@ export default function ChatScreen() {
         setTrainerId(trainerId);
         setUserId(userId);
       } catch (error) {
-        console.error('Error fetching IDs:', error);
+        console.log('Error fetching IDs:', error);
       } finally {
         setLoading(false); // Stop loading once IDs are fetched
       }
@@ -62,10 +62,10 @@ export default function ChatScreen() {
 
             setMessages(formattedMessages);
           } else {
-            console.error('Fetched messages is not an array:', fetchedMessages);
+            console.log('Fetched messages is not an array:', fetchedMessages);
           }
         } catch (error) {
-          console.error('Error fetching messages:', error);
+          console.log('Error fetching messages:', error);
         } finally {
           setLoading(false); // Stop loading once messages are fetched
           setInitialFetchComplete(true); // Mark initial fetch as complete
@@ -76,7 +76,7 @@ export default function ChatScreen() {
 
       // Set up polling to fetch new messages every 3 seconds
       const intervalId = setInterval(() => {
-        fetchMessages().catch(console.error); // Handle errors in background fetch
+        fetchMessages().catch(console.log); // Handle errors in background fetch
       }, 3000);
 
       // Cleanup interval on component unmount
@@ -115,7 +115,7 @@ export default function ChatScreen() {
           )
         );
       } catch (error) {
-        console.error('Error sending message:', error);
+        console.log('Error sending message:', error);
 
         // Update message status to failed
         setMessages(prev =>

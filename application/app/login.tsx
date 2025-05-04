@@ -48,7 +48,7 @@ export default function LoginPage() {
       await AsyncStorage.setItem("id", response.data.id.toString());
       setIsLoggedIn(true);
     } catch (error) {
-      console.error("Login error:", error);
+      console.log("Login error:", error);
       Alert.alert(
         "Invalid Credentials",
         "Please check your email and password!"
