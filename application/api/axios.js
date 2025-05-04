@@ -11,7 +11,7 @@ const ENVIRONMENTS = {
     name: "local",
   },
   NGROK: {
-    baseURL: "https://240d-2409-40f3-205b-4358-1935-f8b9-c172-2ac5.ngrok-free.app/api",
+    baseURL: "https://c82d-2409-40f3-2004-ab84-bcef-51d1-fcee-8139.ngrok-free.app/api",
     name: "ngrok",
   },
 };

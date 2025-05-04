@@ -101,7 +101,7 @@ const Gym: React.FC = () => {
         const userSubscriptionData = userSubscriptionResponse.data;
 
         if (!Array.isArray(userSubscriptionData)) {
-          console.error(
+          console.log(
             "Expected user subscriptions to be an array but got:",
             userSubscriptionData,
           );
@@ -138,7 +138,7 @@ const Gym: React.FC = () => {
         const plansData = plansResponse.data;
 
         if (!Array.isArray(plansData)) {
-          console.error("Expected plans to be an array but got:", plansData);
+          console.log("Expected plans to be an array but got:", plansData);
           return;
         }
 
@@ -214,7 +214,7 @@ const Gym: React.FC = () => {
         );
         await AsyncStorage.setItem("trainer_name", trainerData.trainer_name);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.log("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
@@ -303,7 +303,7 @@ const Gym: React.FC = () => {
         );
       }
     } catch (error) {
-      console.error("Error generating payment link:", error);
+      console.log("Error generating payment link:", error);
       Alert.alert("Error", "Failed to generate payment link.");
     }
   };
@@ -375,7 +375,7 @@ const Gym: React.FC = () => {
       const userSubscriptionData = userSubscriptionResponse.data;
 
       if (!Array.isArray(userSubscriptionData)) {
-        console.error(
+        console.log(
           "Expected user subscriptions to be an array but got:",
           userSubscriptionData,
         );
@@ -438,7 +438,7 @@ const Gym: React.FC = () => {
 
       setAllTrainers(allTrainersData);
     } catch (error) {
-      console.error("Error fetching updated data:", error);
+      console.log("Error fetching updated data:", error);
     }
   };
 
