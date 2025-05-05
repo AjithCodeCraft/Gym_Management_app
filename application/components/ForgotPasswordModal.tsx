@@ -35,7 +35,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ visible, onCl
       const response = await api.post("password-reset/", { email });
       setSuccessMessage("Password reset link has been sent to your email");
     } catch (error: any) {
-      console.error("Password reset error:", error);
+      console.log("Password reset error:", error);
       let errorMessage = "Failed to send reset link";
       
       if (error.response) {
